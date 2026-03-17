@@ -1003,7 +1003,7 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         pass
 
     # try to do the following.
-    if tokens_lc[:5] == ["try", "to", "do", "the", "following"]:
+    if tokens_lc[:5] == ["try", "to", "do", "the", "following"] or tokens_lc == ["try", ":"]:
         _require_period(lt, line_no)
         cur.i += 1
         try_body = _parse_block(cur, expected_indent=expected_indent + 4)
@@ -1017,21 +1017,29 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             if nxt.indent == expected_indent and len(nxt_lc) >= 2 and nxt_lc[:2] == ["on", "error"]:
                 clean_nxt_lc = [t for t in nxt_lc if t != ","]
                 clean_nxt_tokens = [t for t in nxt.tokens if t != ","]
-                if len(clean_nxt_lc) >= 3 and clean_nxt_lc[-3:] == ["do", "the", "following"]:
+                
+                is_valid_catch_head = False
+                if clean_nxt_lc[-3:] == ["do", "the", "following"] or clean_nxt_lc[-1] == ":":
+                    is_valid_catch_head = True
+                    
+                if is_valid_catch_head:
                     _require_period(nxt, nxt_no)
                     if "saving" in clean_nxt_lc and "to" in clean_nxt_lc:
                         sav_i = clean_nxt_lc.index("saving")
                         to_i = clean_nxt_lc.index("to")
                         if to_i == sav_i + 1:
-                            do_i = len(clean_nxt_lc) - 3
+                            if clean_nxt_lc[-1] == ":":
+                                do_i = len(clean_nxt_lc) - 1
+                            else:
+                                do_i = len(clean_nxt_lc) - 3
                             error_name = _join_name(clean_nxt_tokens[to_i + 1 : do_i])
                     cur.i += 1
                     catch_body = _parse_block(cur, expected_indent=expected_indent + 4)
                 else:
-                    raise VerbaParseError("I expected 'on error, do the following.' or 'on error saving to [variable], do the following.'", line_no=nxt_no, line=nxt.raw)
+                    raise VerbaParseError("I expected 'on error, do the following.' or 'on error saving to [variable]:'", line_no=nxt_no, line=nxt.raw)
         
         if cur.i >= len(cur.lines):
-            raise VerbaParseError("I expected 'end try.'", line_no=line_no)
+            raise VerbaParseError("I expected 'end.'", line_no=line_no)
         end_line = cur.lines[cur.i]
         end_no = cur.i + 1
         if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":

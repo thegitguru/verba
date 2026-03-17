@@ -228,10 +228,20 @@ Operators supported:
 
 #### Try / Catch Error Handling
 
+*Verbose Style:*
 ```vb
-try to do the following:
+try to do the following.
     run dangerous_function.
-on error saving to error_message, do the following:
+on error saving to error_message, do the following.
+    say "An error occurred: ", error_message.
+end.
+```
+
+*Concise Style:*
+```vb
+try:
+    run dangerous_function.
+on error saving to error_message:
     say "An error occurred: ", error_message.
 end.
 ```
