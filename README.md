@@ -1,36 +1,29 @@
-## Verba — A Natural English Programming Language
+# Verba — A Natural English Programming Language
 
 Verba is a modern interpreter designed to bridge the gap between plain English and structural programming. Verba has two identical paradigms: you can write programs that read like conversational English sentences, or drop instantly into highly concise, familiar structural syntax whenever you feel like it.
 
-### Key constraints
+---
 
-In Verba source files, statements can only be ended with:
-- period `.` (standard statement terminator)
-- colon `:` (block starter / statement terminator)
+## Key Constraints
 
-Blocks are detected by indentation (4 spaces or a tab). 
+- Every statement must end with a period `.` or colon `:`
+- Blocks are detected by indentation (4 spaces or a tab)
 
-### Install (optional)
+---
 
-From the repo root:
+## Install
 
 ```bash
 python -m pip install -e .
 ```
 
-### Run a Verba program
+## Run a Program
 
 ```bash
 python -m verba examples/full_example.vrb
 ```
 
-Or, if installed:
-
-```bash
-verba examples/full_example.vrb
-```
-
-### Start the REPL
+## Start the REPL
 
 ```bash
 python -m verba --repl
@@ -40,19 +33,23 @@ Type `end.` on its own line to exit.
 
 ---
 
-### Language overview
+## Language Overview
 
-#### Notes / comments
+### Comments
 
 ```vb
 note this is ignored by the interpreter.
 ```
 
-#### Syntax Dualities
-Verba was designed from the ground up to allow for perfectly interchangeable natural language grammar or structural, concise syntaxes on the fly. You can mix and match conversational English keywords with symbolic shorthand entirely seamlessly.
+### Syntax Dualities
 
-#### Variables & Assignments
-*Verbose Style:*
+Verba allows perfectly interchangeable natural language or concise structural syntax. You can mix and match freely.
+
+---
+
+### Variables & Assignment
+
+*Verbose:*
 ```vb
 let counter be the number 1.
 let name be the word quote Alice.
@@ -60,7 +57,7 @@ increase counter by 1.
 decrease counter by 2.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 counter = 1.
 name = "Alice".
@@ -68,32 +65,57 @@ counter += 1.
 counter -= 2.
 ```
 
-#### Output
-*Verbose Style:*
+---
+
+### Output
+
+*Verbose:*
 ```vb
 say hello and username.
 display item.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 say "hello ", username.
 say.
 ```
 
-#### Input
-*Verbose Style:*
+> Spacing is controlled entirely by your string literals. `say "hello ", name.` prints `hello aryan`.
+
+---
+
+### Input
+
+*Verbose:*
 ```vb
 ask the user quote what is your name and save to username.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 ask the user "what is your name?" and save to username.
 ```
 
-#### Conditions
-*Verbose Style:*
+---
+
+### Math Expressions
+
+```vb
+result = num * counter.
+x = 10 + 2 * 3.
+r = 10 % 3.
+```
+
+Operators:
+- *Verbose:* `plus`, `minus`, `times`, `divided by`, `remainder after dividing by`
+- *Concise:* `+`, `-`, `*`, `/`, `%`
+
+---
+
+### Conditions
+
+*Verbose:*
 ```vb
 if age is less than 18, do the following.
     say you are a minor.
@@ -102,7 +124,7 @@ otherwise do the following.
 end if.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 if age < 18:
     say "you are a minor.".
@@ -111,31 +133,34 @@ else:
 end.
 ```
 
-Comparisons supported:
+Comparisons:
 - *Verbose:* `is`, `equals`, `is not`, `does not equal`, `is greater than`, `is less than`, `is at least`, `is at most`
 - *Concise:* `==`, `!=`, `>`, `<`, `>=`, `<=`
 
-Boolean operators supported: `and`, `or`, `not`.
+Boolean operators: `and`, `or`, `not`
 
-#### Loops
+---
 
-Repeat a fixed number of times:
+### Loops
+
+**Repeat a fixed number of times:**
 ```vb
 repeat 2 times, do the following.
     say again.
 end repeat.
 ```
 
-While loop:
-*Verbose Style:*
+**While loop:**
+
+*Verbose:*
 ```vb
 keep doing the following while counter is at most 3.
-    say counting and counter.
+    say "counting ", counter.
     increase counter by 1.
 end keep.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 while counter <= 3:
     say "counting ", counter.
@@ -143,22 +168,25 @@ while counter <= 3:
 end.
 ```
 
-For-each loop over a list:
-*Verbose Style:*
+**For-each loop:**
+
+*Verbose:*
 ```vb
 for each item in colors, do the following.
-    say color and item.
+    say "color ", item.
 end for.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 for item in colors:
     say "color ", item.
 end.
 ```
 
-#### Lists
+---
+
+### Lists
 
 ```vb
 colors = a list of red, green, blue.
@@ -166,69 +194,50 @@ add yellow to colors.
 remove green from colors.
 ```
 
-1-based indexing (item 1 is the first item):
+1-based indexing:
 ```vb
 first_color = item 1 of colors.
 ```
 
-#### Functions
+---
 
-Define and run:
-*Verbose Style:*
+### Functions
+
+*Verbose:*
 ```vb
-define greet person needing name, age as follows.
+define greet_person needing name, age as follows.
     say "hello ", name.
 end define.
 
-run greet person with username, user age.
+run greet_person with username, user_age.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
-define greet person needing name, age:
+define greet_person needing name, age:
     say "hello ", name.
 end.
 
-run greet person with username, user age.
+run greet_person with username, user_age.
 ```
 
-Return a value:
-*Verbose Style:*
+**Return a value:**
 ```vb
-define add two numbers needing a, b as follows.
-    give back a plus b.
-end define.
-```
-
-*Concise Style:*
-```vb
-define add two numbers needing a, b:
+define add_two_numbers needing a, b:
     give a + b.
 end.
 ```
 
-Capture function result:
-*Verbose & Concise:*
+**Capture result:**
 ```vb
-let total be the result of running add two numbers with 2, 3.
-total = the result of running add two numbers with 2, 3.
+total = the result of running add_two_numbers with 2, 3.
 ```
 
-#### Math expressions
+---
 
-```vb
-result = num * counter.
-x = 10 + 2 * 3.
-r = 10 % 3.
-```
+### Try / Catch
 
-Operators supported:
-- *Verbose:* `plus`, `minus`, `times`, `divided by`, `remainder after dividing by`
-- *Concise:* `+`, `-`, `*`, `/`
-
-#### Try / Catch Error Handling
-
-*Verbose Style:*
+*Verbose:*
 ```vb
 try to do the following.
     run dangerous_function.
@@ -237,7 +246,7 @@ on error saving to error_message, do the following.
 end.
 ```
 
-*Concise Style:*
+*Concise:*
 ```vb
 try:
     run dangerous_function.
@@ -246,7 +255,9 @@ on error saving to error_message:
 end.
 ```
 
-#### Imports
+---
+
+### Imports
 
 ```vb
 import from file called "my_module.vrb".
@@ -254,18 +265,355 @@ import from file called "my_module.vrb".
 
 ---
 
+## Examples
+
+### 1. test.vrb — Basic Variables & Math
+
+A minimal program demonstrating typed variable declarations and arithmetic expressions.
+
+```vb
+let x be the number 2.
+let y be the number 5.
+say "x + y = ", x + y, ", x - y = ", x - y.
+```
+
+**Output:**
+```
+x + y = 7, x - y = -3
+```
+
+---
+
+### 2. math_and_else.vrb — Math, Input & Conditionals
+
+Demonstrates user input, verbose-style math operations, `set`, and an `if/else` block.
+
+```vb
+ask the user quote what is your name and save to username.
+say "hello " and username.
+
+let score be the number 10.
+set score to score + 5 * 2.
+let quotient be score / 4.
+let difference be quotient - 1.
+
+say "your score is ", score.
+say "your quotient is ", quotient.
+say "your difference is ", difference.
+
+if difference is greater than 3, do the following.
+    say "difference is big".
+else do the following.
+    say "difference is small".
+end if.
+```
+
+**Output:**
+```
+what is your name aryan
+hello aryan
+your score is 20
+your quotient is 5
+your difference is 4
+difference is big
+```
+
+---
+
+### 3. lists_and_loops.vrb — Lists, For & Repeat
+
+Demonstrates list creation, mutation, for-each iteration, and a fixed repeat loop.
+
+```vb
+colors = a list of red, green, blue.
+add yellow to colors.
+remove green from colors.
+
+for item in colors:
+    say "color ", item.
+end.
+
+repeat 2 times, do the following.
+    say again.
+end repeat.
+```
+
+**Output:**
+```
+color red
+color blue
+color yellow
+again
+again
+```
+
+---
+
+### 4. full_example.vrb — Functions, Input & While Loop
+
+A complete program combining function definitions, user input, conditionals, and a while loop.
+
+```vb
+note this program asks for a name and age, then greets the user.
+
+define greet_person needing name, age as follows.
+    say "hello ", name.
+    if age < 18:
+        say "you are a minor.".
+    else:
+        say "you are an adult.".
+    end.
+end.
+
+ask the user "what is your name?" and save to username.
+ask the user "how old are you?" and save to user_age.
+
+run greet_person with username, user_age.
+
+counter = 1.
+while counter <= 3:
+    say "counting ", counter.
+    counter += 1.
+end.
+
+say goodbye.
+```
+
+**Output:**
+```
+what is your name? aryan
+how old are you? 21
+hello aryan
+you are an adult.
+counting 1
+counting 2
+counting 3
+goodbye
+```
+
+---
+
+### 5. table.vrb — Multiplication Table
+
+Takes two inputs and prints a multiplication table using a while loop.
+
+```vb
+ask the user "which number's table do you want?" and save to num.
+ask the user "how many times?" and save to limit.
+
+counter = 1.
+while counter <= limit:
+    result = num * counter.
+    say num, " x ", counter, " = ", result.
+    counter += 1.
+end.
+```
+
+**Output:**
+```
+which number's table do you want? 5
+how many times? 12
+5 x 1 = 5
+5 x 2 = 10
+...
+5 x 12 = 60
+```
+
+---
+
+### 6. pattern-star.vrb — Star Triangle Pattern
+
+Builds a right-angled star triangle using nested while loops, lists, and a for-each loop.
+
+```vb
+asterisk = "*".
+
+define print_triangle needing rows as follows.
+    row = 1.
+    while row <= rows:
+        stars = a list of x.
+        remove x from stars.
+        col = 1.
+        while col <= row:
+            add asterisk to stars.
+            col += 1.
+        end.
+        for item in stars:
+            display item.
+        end.
+        say.
+        row += 1.
+    end.
+end.
+
+ask the user "how many rows do you want?" and save to row_count.
+
+run print_triangle with row_count.
+```
+
+**Output (5 rows):**
+```
+*
+**
+***
+****
+*****
+```
+
+---
+
+### 7. my_module.vrb — Reusable Module
+
+A standalone module file that defines a reusable function and can be imported by other programs.
+
+```vb
+define multiply_things needing a, b:
+    give a * b.
+end.
+
+say "module loaded !".
+```
+
+---
+
+### 8. test_new_features.vrb — Imports & Error Handling
+
+Demonstrates importing an external module, capturing its return value, and try/catch error handling.
+
+```vb
+note test imports
+
+import from file called "examples/my_module.vrb".
+
+say "module loaded !".
+
+res = the result of running multiply_things with 4, 5.
+say "The result is ", res.
+
+note test error handling
+try to do the following:
+    say "Going to divide by zero now...".
+    oops = 10 / 0.
+on error saving to error_message, do the following:
+    say "Caught an error !".
+    say "Reason : ", error_message.
+end.
+
+note simple catch without error capture
+try to do the following:
+    x = 1 / 0.
+on error, do the following:
+    say "Caught another error silently !".
+end.
+```
+
+**Output:**
+```
+module loaded !
+module loaded !
+The result is 20
+Going to divide by zero now...
+Caught an error !
+Reason : Error on line 13:
+  I cannot divide by zero.
+Caught another error silently !
+```
+
+---
+
+### 9. file_io.vrb — File I/O & Error Handling
+
+Saves a variable to disk, loads it back, and wraps the whole operation in a try/catch block.
+
+```vb
+note demonstrate saving and loading text with error handling.
+
+message = "hello".
+
+try:
+    save message to file called "out.txt".
+    say "File saved successfully.".
+
+    load file called "out.txt" into loaded_message.
+    say "Loaded content: ", loaded_message.
+on error saving to error_msg:
+    say "An error occurred during file operations: ", error_msg.
+end.
+```
+
+**Output:**
+```
+File saved successfully.
+Loaded content: hello
+```
+
+---
+
+### 10. advanced.vrb — OOP, Async, Fetch & Memory
+
+The most complete example. Covers classes, object instantiation, async functions, file append, HTTP fetch, and memory freeing.
+
+```vb
+class Person:
+    define init needing first_name as follows:
+        self.name = first_name.
+    end.
+    define walk as follows:
+        say self.name, " is walking.".
+    end.
+end.
+
+p = new Person with "Alice".
+run p.walk.
+p.name = "Bob".
+run p.walk.
+
+note Async
+async define background_work as follows:
+    say "background job running".
+    append "hello file!" to file called "bg.log".
+    give "job done".
+end.
+
+task = async run background_work.
+await result = task.
+say "Task finished with: ", result.
+
+load file called "bg.log" into val.
+say "Read from file: ", val.
+delete file called "bg.log".
+
+note Fetch url
+fetch "http://google.com" into data.
+say "Fetched google.com successfully.".
+
+note Free memory
+free data.
+```
+
+**Output:**
+```
+Alice is walking.
+Bob is walking.
+background job running
+Task finished with: job done
+Read from file: hello file!
+Fetched google.com successfully.
+```
+
+---
+
 ## Advanced Capabilities
 
-Verba is not simply an educational syntax mapped around basic primitives. It natively connects to the Operating System to support fully featured, modern software practices natively written directly into the grammar.
+### 1. Object-Oriented Programming
 
-### 1. Object-Oriented Programming (OOP)
-Define structural Classes holding discrete properties, instantiate isolated memory Objects out of those classes, and call internal properties or native methods seamlessly via standard dot-notation!
+Define classes with `init` and methods, instantiate with `new`, access properties via dot-notation.
+
 ```vb
 class Person:
     define init needing first_name:
         self.name = first_name.
     end.
-    
     define walk:
         say self.name, " is walking.".
     end.
@@ -278,7 +626,7 @@ run p.walk.
 ```
 
 ### 2. File I/O & System Streams
-Load direct textual streams from hard drives directly into variables, push textual append updates to live log paths over time, instantly save new files completely overwriting the target, and perform deletion/garbage collection of real files from disk dynamically.
+
 ```vb
 append "Server Starting..." to file called "output.log".
 
@@ -291,35 +639,38 @@ say loaded_message.
 delete file called "out.txt".
 ```
 
-### 3. HyperText Networking
-Perform native OS-level URL HTTP requests entirely embedded in plain-grammar variables.
+### 3. HTTP Networking
+
 ```vb
 fetch "http://example.com" into site_html.
-say "Source Code fetched! HTML: ", site_html.
+say "Fetched! HTML: ", site_html.
 ```
 
 ### 4. Memory Management
-Drop extreme memory burdens or excessive OS stream variables entirely out of variable-state scope with direct variable memory wiping.
+
 ```vb
 fetch "http://some-giant-API.com/huge-payload" into massive_variable.
 free massive_variable.
 ```
 
-### 5. Asynchronous Parallel Concurrency
-Natively dispatch complex or long-running computations into parallel Operating System background threads, gracefully `await` the generated signals out of band, and never hold up your main-thread processes natively cleanly with conversational grammar!
+### 5. Asynchronous Concurrency
+
 ```vb
-async define background work needing server_url:
+async define background_work needing server_url:
     fetch server_url into html.
     say "background job running".
     give html.
 end.
 
-task = async run background work with "https://example.com".
-say "Doing something else on the main thread entirely!".
+task = async run background_work with "https://example.com".
+say "Doing something else on the main thread!".
 await result = task.
-say "Async Web Request Finished! Result: ", result.
+say "Async finished! Result: ", result.
 ```
 
-### Notes
-- Every single root-level statement must end with a period `.` or colon `:`.
-- When Verba cannot understand a line, it throws a plain-English error pointing directly at the line and column number context.
+---
+
+## Notes
+
+- Every root-level statement must end with `.` or `:`.
+- When Verba cannot understand a line, it throws a plain-English error pointing at the exact line and column.
