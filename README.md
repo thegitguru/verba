@@ -276,6 +276,80 @@ import from file called "my_module.vrb".
 
 ---
 
+### Pointers
+
+Verba has first-class pointer semantics. A pointer holds a reference to a variable's memory cell — reading or writing through it directly affects the original variable.
+
+**Take a reference:**
+
+*Verbose:*
+```vb
+ptr = ref x.
+```
+
+*Concise:*
+```vb
+ptr = &x.
+```
+
+**Read through a pointer (dereference):**
+
+*Verbose:*
+```vb
+val = value at ptr.
+```
+
+*Concise:*
+```vb
+val = deref ptr.
+```
+
+**Write through a pointer:**
+
+*Verbose:*
+```vb
+set value at ptr to 42.
+```
+
+*Concise:*
+```vb
+deref ptr = 42.
+```
+
+**Re-seat a pointer at a different variable:**
+```vb
+point ptr to y.
+```
+
+**Null pointer:**
+```vb
+ptr = null.
+```
+
+**Null checks:**
+```vb
+if ptr is null:
+    say "nothing here.".
+end.
+
+if ptr is not null:
+    say "value: ", deref ptr.
+end.
+```
+
+**Pass a pointer to a function to mutate the original:**
+```vb
+define double_it needing n as follows.
+    deref n = deref n * 2.
+end.
+
+val = 5.
+run double_it with &val.
+say val.
+```
+
+---
+
 ## Examples
 
 ### 1. test.vrb — Basic Variables & Math
@@ -614,56 +688,68 @@ Fetched google.com successfully.
 
 ---
 
-### 11. pointers.vrb — Reference Semantics via Objects
+### 11. pointers.vrb — Native Pointer Semantics
 
-Demonstrates that objects behave like pointers: assigning an object to another variable or passing it to a function gives a reference to the same data, not a copy.
+Demonstrates first-class pointer operations: taking references, reading and writing through pointers, null checks, re-seating, and passing pointers to functions.
 
 ```vb
-note pointers.vrb — Reference semantics via objects.
-note In Verba, objects act like pointers: passing an object to a function
-note lets the function mutate the original, not a copy.
+/- 1. take a reference with ref / &
+x = 42.
+ptr = ref x.
+say "ptr points to x, value: ", deref ptr.
 
-class Counter:
-    define init needing start as follows:
-        self.value = start.
-    end.
-    define increment as follows:
-        self.value = self.value + 1.
-    end.
-    define reset as follows:
-        self.value = 0.
-    end.
+/- 2. write through a pointer — mutates x directly
+deref ptr = 100.
+say "after deref write, x = ", x.
+
+/- 3. verbose syntax: point / value at / set value at
+y = 7.
+point ptr to y.
+say "ptr re-seated to y, value at ptr: ", value at ptr.
+
+set value at ptr to 99.
+say "after set value at ptr, y = ", y.
+
+/- 4. null pointer and null checks
+p = null.
+if p is null:
+    say "p is null.".
 end.
 
-note Create a counter object — c acts like a pointer to the Counter data.
-c = new Counter with 10.
-say "initial value: ", c.value.
-
-note Passing c to a function mutates the original object (reference semantics).
-define bump_twice needing obj as follows.
-    run obj.increment.
-    run obj.increment.
+p = ref x.
+if p is not null:
+    say "p is not null, value: ", deref p.
 end.
 
-run bump_twice with c.
-say "after bump_twice: ", c.value.
+/- 5. passing a pointer to a function — mutates the original variable
+define double_it needing n as follows.
+    deref n = deref n * 2.
+end.
 
-note Two variables can point to the same object.
-alias = c.
-run alias.increment.
-say "after alias increment, c.value: ", c.value.
+val = 5.
+vptr = ref val.
+run double_it with vptr.
+say "after double_it, val = ", val.
 
-note Reset through the alias — both names see the change.
-run alias.reset.
-say "after alias reset, c.value: ", c.value.
+/- 6. concise & syntax
+z = 10.
+q = &z.
+say "q via &z, value: ", deref q.
+deref q = 20.
+say "after deref q = 20, z = ", z.
 ```
 
 **Output:**
 ```
-initial value: 10
-after bump_twice: 12
-after alias increment, c.value: 13
-after alias reset, c.value: 0
+ptr points to x, value: 42
+after deref write, x = 100
+ptr re-seated to y, value at ptr: 7
+after set value at ptr, y = 99
+p is null.
+p is not null, value: 100
+after double_it, val = 10
+q via &z, value: 10
+after deref q = 20, z = 20
 ```
 
 ---
@@ -731,6 +817,28 @@ task = async run background_work with "https://example.com".
 say "Doing something else on the main thread!".
 await result = task.
 say "Async finished! Result: ", result.
+```
+
+### 6. Pointers
+
+```vb
+x = 10.
+ptr = ref x.          /- or: ptr = &x.
+say deref ptr.        /- prints 10
+deref ptr = 99.       /- x is now 99
+say x.                /- prints 99
+
+/- re-seat at a different variable
+y = 5.
+point ptr to y.
+set value at ptr to 0.
+say y.                /- prints 0
+
+/- null safety
+ptr = null.
+if ptr is null:
+    say "no target.".
+end.
 ```
 
 ---
