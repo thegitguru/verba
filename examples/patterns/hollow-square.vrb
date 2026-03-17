@@ -1,0 +1,19 @@
+note hollow-square.vrb — hollow square border.
+note Only the first/last row and first/last column print *.
+
+ask the user "square size?" and save to size.
+
+row = 1.
+while row <= size:
+    col = 1.
+    while col <= size:
+        if row == 1 or row == size or col == 1 or col == size:
+            display "*".
+        else:
+            display " ".
+        end.
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.

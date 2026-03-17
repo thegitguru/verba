@@ -310,3 +310,27 @@ class AwaitStmt(Stmt):
     target_name: str
     task_name: str
 
+
+# --- Pointer nodes ---
+
+@dataclass(frozen=True)
+class Ref(Expr):
+    """ref x  /  point to x  — captures a mutable reference to a variable."""
+    span: Span
+    name: str
+
+
+@dataclass(frozen=True)
+class Deref(Expr):
+    """deref ptr  /  value at ptr  — reads the value a pointer points to."""
+    span: Span
+    name: str
+
+
+@dataclass(frozen=True)
+class DerefSet(Stmt):
+    """deref ptr = expr  /  set value at ptr to expr  — writes through a pointer."""
+    span: Span
+    name: str
+    value: Expr
+

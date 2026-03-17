@@ -1,0 +1,21 @@
+note checkerboard.vrb — alternating * and space checkerboard.
+note Prints * when (row + col) is even, space otherwise.
+
+ask the user "board size?" and save to size.
+
+row = 1.
+while row <= size:
+    col = 1.
+    while col <= size:
+        check = row + col.
+        remainder = check % 2.
+        if remainder == 0:
+            display "*".
+        else:
+            display " ".
+        end.
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.

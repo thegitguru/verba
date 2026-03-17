@@ -49,6 +49,9 @@ from .ast import (
     AsyncDefine,
     AsyncRun,
     AwaitStmt,
+    Ref,
+    Deref,
+    DerefSet,
 )
 from .errors import VerbaParseError
 from .tokenize import LineTokens, tokenize_program, Token
@@ -85,6 +88,8 @@ def _join_name(tokens: list[Token], *, line_no: int = 0) -> str:
 
 
 _COMPARISONS: list[tuple[list[str], str]] = [
+    (["is", "not", "null"], "!null"),
+    (["is", "null"], "null"),
     (["is", "not"], "!="),
     (["does", "not", "equal"], "!="),
     (["!", "="], "!="),
@@ -120,6 +125,7 @@ _MATH_OPS: list[tuple[list[str], str]] = [
     (["divided", "by"], "/"),
     (["/"], "/"),
     (["remainder", "after", "dividing", "by"], "%"),
+    (["%"], "%"),
 ]
 
 
@@ -145,6 +151,19 @@ def _parse_atom(tokens: list[Token], tokens_lc: list[str], i: int, *, span: Span
         return Literal(span, True), i + 1
     if tl == "false":
         return Literal(span, False), i + 1
+    if tl == "null":
+        return Literal(span, None), i + 1
+
+    # &x  — concise ref
+    if t.value == "&" and i + 1 < len(tokens):
+        return Ref(span, tokens[i + 1].value.lower()), i + 2
+
+    # deref ptr  /  value at ptr  — dereference read
+    if tl in ("deref", "value") and i + 1 < len(tokens):
+        if tl == "deref":
+            return Deref(span, tokens[i + 1].value.lower()), i + 2
+        if tl == "value" and i + 1 < len(tokens) and tokens_lc[i + 1] == "at":
+            return Deref(span, tokens[i + 2].value.lower()), i + 3
 
     num = _parse_number(t.value)
     if num is not None:
@@ -196,6 +215,12 @@ def parse_expr(tokens: list[Token], *, line_no: int) -> Expr:
     if tokens_lc[0] == "quote":
         text = " ".join([t.value for t in tokens[1:]]).strip()
         return Literal(span, text)
+
+    # ref x  /  point to x  — verbose and concise ref
+    if tokens_lc[0] == "ref" and len(tokens) == 2:
+        return Ref(span, tokens[1].value.lower())
+    if tokens_lc[:2] == ["point", "to"] and len(tokens) == 3:
+        return Ref(span, tokens[2].value.lower())
 
     # Shunting-yard to support precedence and multi-word operators.
     out: list[object] = []
@@ -279,6 +304,11 @@ def parse_condition(tokens: list[Token], *, line_no: int) -> BoolExpr:
             left_tokens = tokens[j:k]
             if not left_tokens:
                 break
+
+            # null / !null comparisons have no right-hand side
+            if op in ("null", "!null"):
+                left = parse_expr(left_tokens, line_no=line_no)
+                return Compare(span, op, left, Literal(span, None)), next_k
 
             end = len(tokens_lc)
             for m in range(next_k, len(tokens_lc)):
@@ -507,6 +537,14 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         return Let(span, name, value)
 
+    # set value at ptr to expr.  — write through pointer (verbose)
+    if tokens_lc[:3] == ["set", "value", "at"] and "to" in tokens_lc:
+        to_i = tokens_lc.index("to")
+        ptr_name = _join_name(tokens[3:to_i], line_no=line_no)
+        value = parse_expr(tokens[to_i + 1:], line_no=line_no)
+        cur.i += 1
+        return DerefSet(span, ptr_name, value)
+
     # set ... to ...
     if first_val == "set":
         try:
@@ -524,7 +562,7 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         "repeat", "define", "async", "run", "let", "set", "increase", 
         "decrease", "save", "load", "import", "class", "free", "delete", 
         "fetch", "append", "note", "try", "otherwise", "else", "end", "give", "return",
-        "await"
+        "await", "deref", "point", "ref"
     }
     is_keyword_stmt = first_val in _STATEMENT_KEYWORDS
 
@@ -1019,6 +1057,31 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         # This branch is normally pre-empted by the general 'let' handler; we keep this
         # pattern here for clarity if you later prefer strict ordering.
         pass
+
+    # deref ptr = expr.  — write through pointer (concise)
+    if first_val == "deref" and "=" in tokens_lc:
+        eq_i = tokens_lc.index("=")
+        ptr_name = _join_name(tokens[1:eq_i], line_no=line_no)
+        value = parse_expr(tokens[eq_i + 1:], line_no=line_no)
+        cur.i += 1
+        return DerefSet(span, ptr_name, value)
+
+    # set value at ptr to expr.  — write through pointer (verbose)
+    if tokens_lc[:3] == ["set", "value", "at"] and "to" in tokens_lc:
+        to_i = tokens_lc.index("to")
+        ptr_name = _join_name(tokens[3:to_i], line_no=line_no)
+        value = parse_expr(tokens[to_i + 1:], line_no=line_no)
+        cur.i += 1
+        return DerefSet(span, ptr_name, value)
+
+    # point ptr to var.  — re-seat a pointer at a different variable (verbose)
+    if first_val == "point" and "to" in tokens_lc:
+        to_i = tokens_lc.index("to")
+        ptr_name = _join_name(tokens[1:to_i], line_no=line_no)
+        target = _join_name(tokens[to_i + 1:], line_no=line_no)
+        value = Ref(span, target)
+        cur.i += 1
+        return Let(span, ptr_name, value)
 
     # try to do the following.
     if tokens_lc[:5] == ["try", "to", "do", "the", "following"] or tokens_lc == ["try"]:

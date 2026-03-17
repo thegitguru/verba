@@ -7,6 +7,22 @@ from . import ast
 from .errors import VerbaRuntimeError
 
 
+class Pointer:
+    """A mutable cell. ref x wraps the variable name + its environment."""
+    def __init__(self, name: str, env: "Environment"):
+        self.name = name
+        self.env = env
+
+    def get(self) -> object:
+        return self.env.get(self.name)
+
+    def set(self, value: object) -> None:
+        self.env.set(self.name, value)
+
+    def __repr__(self) -> str:
+        return f"<ptr -> {self.name}>"
+
+
 @dataclass
 class Function:
     name: str
@@ -81,6 +97,14 @@ class Interpreter:
         ln = s.span.line_no
         col = s.span.col
         raw = s.span.line_content
+
+        if isinstance(s, ast.DerefSet):
+            ptr = env.get(s.name) if env.contains(s.name) else None
+            if not isinstance(ptr, Pointer):
+                raise VerbaRuntimeError(f"The variable called {s.name} is not a pointer.", line_no=ln, col=col, line=raw)
+            value = self._eval_expr(s.value, env=env, context="general")
+            ptr.set(value)
+            return
 
         if isinstance(s, ast.Note):
             return
@@ -400,6 +424,17 @@ class Interpreter:
         col = e.span.col
         raw = e.span.line_content
 
+        if isinstance(e, ast.Ref):
+            if not env.contains(e.name):
+                raise VerbaRuntimeError(f"The variable called {e.name} has not been defined yet.", line_no=ln, col=col, line=raw)
+            return Pointer(e.name, env)
+
+        if isinstance(e, ast.Deref):
+            ptr = env.get(e.name) if env.contains(e.name) else None
+            if not isinstance(ptr, Pointer):
+                raise VerbaRuntimeError(f"The variable called {e.name} is not a pointer.", line_no=ln, col=col, line=raw)
+            return ptr.get()
+
         if isinstance(e, ast.ObjectNew):
             if e.class_name not in self.classes:
                 raise VerbaRuntimeError(f"Class {e.class_name} has not been defined.", line_no=ln)
@@ -464,6 +499,10 @@ class Interpreter:
         if isinstance(b, ast.Compare):
             left = self._eval_expr(b.left, env=env, context="general")
             right = self._eval_expr(b.right, env=env, context="general")
+            if b.op == "null":
+                return left is None
+            if b.op == "!null":
+                return left is not None
             if b.op in [">", "<", ">=", "<="]:
                 a = self._to_number(left, ln)
                 c = self._to_number(right, ln)
@@ -552,6 +591,8 @@ class Interpreter:
         return str(v)
 
     def _format_value(self, v: Any) -> str:
+        if isinstance(v, Pointer):
+            return repr(v)
         if isinstance(v, bool):
             return "true" if v else "false"
         if v is None:

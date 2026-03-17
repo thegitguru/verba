@@ -39,6 +39,17 @@ Type `end.` on its own line to exit.
 
 ```vb
 note this is ignored by the interpreter.
+/- this is also a single-line comment.
+x = 10. /- inline comment, x is still 10.
+```
+
+Multi-line block comments use `/--` to open and `--/` to close:
+
+```vb
+/--
+This entire block is ignored.
+Spans as many lines as you need.
+--/
 ```
 
 ### Syntax Dualities
@@ -599,6 +610,60 @@ background job running
 Task finished with: job done
 Read from file: hello file!
 Fetched google.com successfully.
+```
+
+---
+
+### 11. pointers.vrb — Reference Semantics via Objects
+
+Demonstrates that objects behave like pointers: assigning an object to another variable or passing it to a function gives a reference to the same data, not a copy.
+
+```vb
+note pointers.vrb — Reference semantics via objects.
+note In Verba, objects act like pointers: passing an object to a function
+note lets the function mutate the original, not a copy.
+
+class Counter:
+    define init needing start as follows:
+        self.value = start.
+    end.
+    define increment as follows:
+        self.value = self.value + 1.
+    end.
+    define reset as follows:
+        self.value = 0.
+    end.
+end.
+
+note Create a counter object — c acts like a pointer to the Counter data.
+c = new Counter with 10.
+say "initial value: ", c.value.
+
+note Passing c to a function mutates the original object (reference semantics).
+define bump_twice needing obj as follows.
+    run obj.increment.
+    run obj.increment.
+end.
+
+run bump_twice with c.
+say "after bump_twice: ", c.value.
+
+note Two variables can point to the same object.
+alias = c.
+run alias.increment.
+say "after alias increment, c.value: ", c.value.
+
+note Reset through the alias — both names see the change.
+run alias.reset.
+say "after alias reset, c.value: ", c.value.
+```
+
+**Output:**
+```
+initial value: 10
+after bump_twice: 12
+after alias increment, c.value: 13
+after alias reset, c.value: 0
 ```
 
 ---

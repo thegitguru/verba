@@ -1,0 +1,22 @@
+note pyramid.vrb — centered star pyramid.
+note Row i has (rows - i) leading spaces and (2*i - 1) stars.
+
+ask the user "how many rows?" and save to rows.
+
+row = 1.
+while row <= rows:
+    sp = 1.
+    spaces = rows - row.
+    while sp <= spaces:
+        display " ".
+        sp += 1.
+    end.
+    stars = row * 2 - 1.
+    col = 1.
+    while col <= stars:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.

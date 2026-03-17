@@ -1,0 +1,15 @@
+note right-triangle.vrb — left-aligned right triangle of stars.
+note Row i prints i stars.
+
+ask the user "how many rows?" and save to rows.
+
+row = 1.
+while row <= rows:
+    col = 1.
+    while col <= row:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.

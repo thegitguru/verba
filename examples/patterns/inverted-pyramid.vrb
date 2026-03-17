@@ -1,0 +1,22 @@
+note inverted-pyramid.vrb — inverted centered star pyramid.
+note Row i (counting down from rows) has (i-1) leading spaces and (2*i - 1) stars.
+
+ask the user "how many rows?" and save to rows.
+
+row = rows.
+while row >= 1:
+    sp = 1.
+    spaces = rows - row.
+    while sp <= spaces:
+        display " ".
+        sp += 1.
+    end.
+    stars = row * 2 - 1.
+    col = 1.
+    while col <= stars:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row -= 1.
+end.

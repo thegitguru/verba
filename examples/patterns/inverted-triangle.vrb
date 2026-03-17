@@ -1,0 +1,15 @@
+note inverted-triangle.vrb — inverted left-aligned right triangle.
+note Row 1 prints n stars, last row prints 1 star.
+
+ask the user "how many rows?" and save to rows.
+
+row = rows.
+while row >= 1:
+    col = 1.
+    while col <= row:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row -= 1.
+end.

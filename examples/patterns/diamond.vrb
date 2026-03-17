@@ -1,0 +1,42 @@
+note diamond.vrb — full diamond shape.
+note Upper half: pyramid. Lower half: inverted pyramid without the middle row.
+
+ask the user "how many rows (half-height)?" and save to rows.
+
+note upper half
+row = 1.
+while row <= rows:
+    sp = 1.
+    spaces = rows - row.
+    while sp <= spaces:
+        display " ".
+        sp += 1.
+    end.
+    stars = row * 2 - 1.
+    col = 1.
+    while col <= stars:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.
+
+note lower half (skip the widest row already printed)
+row = rows - 1.
+while row >= 1:
+    sp = 1.
+    spaces = rows - row.
+    while sp <= spaces:
+        display " ".
+        sp += 1.
+    end.
+    stars = row * 2 - 1.
+    col = 1.
+    while col <= stars:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row -= 1.
+end.

@@ -76,10 +76,13 @@ def tokenize_line(line: str, line_no: int) -> LineTokens:
             continue
             
         # Handle symbols
-        if ch in ",+-*/=<>!():[].":
+        if ch in ",+-*/=<>!():[]%&.":
             # Check for 2-char tokens
             if i + 1 < len(s):
                 pair = ch + s[i+1]
+                if pair == "/-":
+                    # Single-line comment — discard everything from here onward
+                    break
                 if pair in ["+=", "-=", "*=", "/=", "==", "!=", "<=", ">="]:
                     tokens.append(Token(pair, line_no, start_col, raw_line))
                     i += 2
@@ -92,7 +95,7 @@ def tokenize_line(line: str, line_no: int) -> LineTokens:
         buf = []
         while i < len(s):
             ch = s[i]
-            if ch.isspace() or ch in ",+-*/=<>!():[]":
+            if ch.isspace() or ch in ",+-*/=<>!():[]%&":
                 break
             if ch == ".":
                 # Split at dot ONLY if it is at the end of the line or followed by a space
@@ -106,6 +109,39 @@ def tokenize_line(line: str, line_no: int) -> LineTokens:
     return LineTokens(indent=indent, raw=raw_line, tokens=tokens)
 
 
+def _strip_comments(source: str) -> str:
+    """Remove /- single-line and /-- ... --/ block comments from source."""
+    out: list[str] = []
+    i = 0
+    in_block = False
+    while i < len(source):
+        # Check for block comment open: /--
+        if not in_block and source[i:i+3] == "/--":
+            in_block = True
+            i += 3
+            continue
+        # Check for block comment close: --/
+        if in_block and source[i:i+3] == "--/":
+            in_block = False
+            i += 3
+            continue
+        # Inside block comment: preserve newlines for line number accuracy
+        if in_block:
+            if source[i] == "\n":
+                out.append("\n")
+            i += 1
+            continue
+        # Check for single-line comment: /-
+        if source[i:i+2] == "/-":
+            # Skip until end of line
+            while i < len(source) and source[i] != "\n":
+                i += 1
+            continue
+        out.append(source[i])
+        i += 1
+    return "".join(out)
+
+
 def tokenize_program(source: str) -> list[LineTokens]:
-    lines = source.splitlines()
+    lines = _strip_comments(source).splitlines()
     return [tokenize_line(line, idx + 1) for idx, line in enumerate(lines)]

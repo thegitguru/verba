@@ -1,0 +1,15 @@
+note number-triangle.vrb — each row prints its row number repeated row times.
+note Row 1: 1, Row 2: 2 2, Row 3: 3 3 3, etc.
+
+ask the user "how many rows?" and save to rows.
+
+row = 1.
+while row <= rows:
+    col = 1.
+    while col <= row:
+        display row.
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.

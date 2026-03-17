@@ -1,0 +1,21 @@
+note left-triangle.vrb — right-aligned triangle (stars flush to the right).
+note Each row has (rows - row) leading spaces then row stars.
+
+ask the user "how many rows?" and save to rows.
+
+row = 1.
+while row <= rows:
+    sp = 1.
+    spaces = rows - row.
+    while sp <= spaces:
+        display " ".
+        sp += 1.
+    end.
+    col = 1.
+    while col <= row:
+        display "*".
+        col += 1.
+    end.
+    say.
+    row += 1.
+end.
