@@ -39,8 +39,12 @@ def repl() -> int:
         # Try to parse the whole buffer so blocks can be typed across multiple lines.
         try:
             program = parse("\n".join(buf))
-        except VerbaParseError:
-            # Keep buffering until it becomes a full valid program or the user finishes a block.
+        except VerbaParseError as e:
+            # Keep buffering only if it's an unfinished block.
+            if str(e).startswith("I expected 'end"):
+                continue
+            print(e, file=sys.stderr)
+            buf = []
             continue
         try:
             interp.run(program)
