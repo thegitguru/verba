@@ -530,6 +530,31 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             cur.i += 1
             return AsyncRun(span, name, fn, args)
             
+        if len(val_tc) >= 4 and val_tc[:4] == ["the", "result", "of", "running"]:
+            if "with" in val_tc:
+                with_i = val_tc.index("with")
+                fn = _join_name(tokens[eq_i + 5 : eq_i + 1 + with_i])
+                args = [parse_expr(a, line_no=line_no) for a in _split_by_commas(tokens[eq_i + 1 + with_i + 1 :])]
+            else:
+                fn = _join_name(tokens[eq_i + 5 :])
+                args = []
+            
+            cur.i += 1
+            if "." in fn:
+                parts = fn.split(".")
+                return LetResultOfMethod(span, name, parts[0], parts[1], args)
+            return LetResultOfRun(span, name, fn, args)
+            
+        if len(val_tc) >= 3 and val_tc[:3] == ["a", "list", "of"]:
+            items_tokens = tokens[eq_i + 4:]
+            items = [parse_expr(item, line_no=line_no) for item in _split_by_commas(items_tokens)]
+            cur.i += 1
+            value = Literal(span, items)
+            if "." in name:
+                parts = name.split(".")
+                return ObjectPropSet(span, parts[0], parts[1], value)
+            return Let(span, name, value, forced_type="list")
+            
         value = parse_expr(tokens[eq_i + 1 :], line_no=line_no)
         cur.i += 1
         
