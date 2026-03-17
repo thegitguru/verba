@@ -51,11 +51,11 @@ def tokenize_line(line: str) -> LineTokens:
                 parts.append("".join(buf))
                 buf = []
             continue
-        if ch == ",":
+        if ch in ",+-*/":
             if buf:
                 parts.append("".join(buf))
                 buf = []
-            parts.append(",")
+            parts.append(ch)
             continue
         buf.append(ch)
     if buf:

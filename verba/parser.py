@@ -73,9 +73,13 @@ _COMPARISONS: list[tuple[list[str], str]] = [
 
 _MATH_OPS: list[tuple[list[str], str]] = [
     (["plus"], "+"),
+    (["+"], "+"),
     (["minus"], "-"),
+    (["-"], "-"),
     (["times"], "*"),
+    (["*"], "*"),
     (["divided", "by"], "/"),
+    (["/"], "/"),
     (["remainder", "after", "dividing", "by"], "%"),
 ]
 
@@ -135,7 +139,7 @@ def parse_expr(tokens: list[str], *, line_no: int) -> object:
 
     # Multi-word variable names (e.g. "user age") are allowed. If there are no math
     # operator words present, treat the whole phrase as a single variable reference.
-    if len(tokens) > 1 and not any(t in ["plus", "minus", "times", "divided", "remainder"] for t in tokens_lc):
+    if len(tokens) > 1 and not any(t in ["plus", "minus", "times", "divided", "remainder", "+", "-", "*", "/"] for t in tokens_lc):
         return VarRef(span, _join_name(tokens))
 
     # Shunting-yard to support precedence and multi-word operators.
@@ -574,7 +578,11 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         if cur.i < len(cur.lines):
             nxt = cur.lines[cur.i]
             nxt_no = cur.i + 1
-            if nxt.indent == expected_indent and _lc(nxt.tokens)[:3] == ["otherwise", "do", "the"] and _lc(nxt.tokens)[-1] == "following":
+            nxt_lc = _lc(nxt.tokens)
+            if nxt.indent == expected_indent and len(nxt_lc) >= 4 and (
+                (nxt_lc[:3] == ["otherwise", "do", "the"] and nxt_lc[-1] == "following") or
+                (nxt_lc[:3] == ["else", "do", "the"] and nxt_lc[-1] == "following")
+            ):
                 _require_period(nxt, nxt_no)
                 cur.i += 1
                 else_body = _parse_block(cur, expected_indent=expected_indent + 4)
@@ -762,7 +770,7 @@ def _parse_say_value(tokens: list[str], *, line_no: int) -> object:
     # If it looks like math, parse as an expression. Otherwise:
     # - a single token can be a variable name OR a single-word literal (resolved at runtime in say-context)
     # - multiple tokens are treated as a literal phrase without requiring "quote"
-    if any(t in ["plus", "minus", "times", "divided", "remainder"] for t in tokens_lc):
+    if any(t in ["plus", "minus", "times", "divided", "remainder", "+", "-", "*", "/"] for t in tokens_lc):
         return parse_expr(tokens, line_no=line_no)
     if len(tokens) == 1:
         return parse_expr(tokens, line_no=line_no)
