@@ -7,6 +7,8 @@ from typing import Any, Optional
 @dataclass(frozen=True)
 class Span:
     line_no: int
+    col: int = 0
+    line_content: Optional[str] = None
 
 
 class Expr:

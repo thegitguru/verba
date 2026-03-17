@@ -79,6 +79,8 @@ class Interpreter:
 
     def _exec_stmt(self, s: ast.Stmt, *, env: Environment) -> None:
         ln = s.span.line_no
+        col = s.span.col
+        raw = s.span.line_content
 
         if isinstance(s, ast.Note):
             return
@@ -102,14 +104,14 @@ class Interpreter:
 
         if isinstance(s, ast.SetVar):
             if not env.contains(s.name):
-                raise VerbaRuntimeError(f"The variable called {s.name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.name} has not been defined yet.", line_no=ln, col=col, line=raw)
             value = self._eval_expr(s.value, env=env, context="general")
             env.set(s.name, value)
             return
 
         if isinstance(s, ast.Increase):
             if not env.contains(s.name):
-                raise VerbaRuntimeError(f"The variable called {s.name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.name} has not been defined yet.", line_no=ln, col=col, line=raw)
             cur = env.get(s.name)
             by = self._to_number(self._eval_expr(s.by, env=env, context="general"), ln)
             env.set(s.name, self._to_number(cur, ln) + by)
@@ -117,7 +119,7 @@ class Interpreter:
 
         if isinstance(s, ast.Decrease):
             if not env.contains(s.name):
-                raise VerbaRuntimeError(f"The variable called {s.name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.name} has not been defined yet.", line_no=ln, col=col, line=raw)
             cur = env.get(s.name)
             by = self._to_number(self._eval_expr(s.by, env=env, context="general"), ln)
             env.set(s.name, self._to_number(cur, ln) - by)
@@ -167,15 +169,15 @@ class Interpreter:
                 self._exec_block(s.body, env=env)
                 guard += 1
                 if guard > 10_000_000:
-                    raise VerbaRuntimeError("This loop ran for too long. Did you forget to update the condition?", line_no=ln)
+                    raise VerbaRuntimeError("This loop ran for too long. Did you forget to update the condition?", line_no=ln, col=col, line=raw)
             return
 
         if isinstance(s, ast.ForEach):
             if not env.contains(s.list_name):
-                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln, col=col, line=raw)
             lst = env.get(s.list_name)
             if not isinstance(lst, list):
-                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln, col=col, line=raw)
             for item in lst:
                 inner = Environment(parent=env)
                 inner.set(s.item_name, item)
@@ -184,20 +186,20 @@ class Interpreter:
 
         if isinstance(s, ast.ListAdd):
             if not env.contains(s.list_name):
-                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln, col=col, line=raw)
             lst = env.get(s.list_name)
             if not isinstance(lst, list):
-                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln, col=col, line=raw)
             val = self._eval_expr(s.value, env=env, context="say")
             lst.append(val)
             return
 
         if isinstance(s, ast.ListRemove):
             if not env.contains(s.list_name):
-                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln, col=col, line=raw)
             lst = env.get(s.list_name)
             if not isinstance(lst, list):
-                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln, col=col, line=raw)
             val = self._eval_expr(s.value, env=env, context="say")
             try:
                 lst.remove(val)
@@ -208,13 +210,13 @@ class Interpreter:
 
         if isinstance(s, ast.ListItemGet):
             if not env.contains(s.list_name):
-                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln)
+                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln, col=col, line=raw)
             lst = env.get(s.list_name)
             if not isinstance(lst, list):
-                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln)
+                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln, col=col, line=raw)
             idx = int(self._to_number(self._eval_expr(s.index, env=env, context="general"), ln))
             if idx < 1 or idx > len(lst):
-                raise VerbaRuntimeError(f"Item {idx} does not exist in the list called {s.list_name}.", line_no=ln)
+                raise VerbaRuntimeError(f"Item {idx} does not exist in the list called {s.list_name}.", line_no=ln, col=col, line=raw)
             env.set(s.target_name, lst[idx - 1])
             return
 
@@ -243,7 +245,7 @@ class Interpreter:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(self._to_word(text))
             except OSError:
-                raise VerbaRuntimeError(f"I could not save to the file called {filename}.", line_no=ln)
+                raise VerbaRuntimeError(f"I could not save to the file called {filename}.", line_no=ln, col=col, line=raw)
             return
 
         if isinstance(s, ast.LoadFile):
@@ -253,7 +255,7 @@ class Interpreter:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
             except OSError:
-                raise VerbaRuntimeError(f"I could not open the file called {filename}.", line_no=ln)
+                raise VerbaRuntimeError(f"I could not open the file called {filename}.", line_no=ln, col=col, line=raw)
             env.set(s.target_name, content)
             return
 
@@ -275,14 +277,14 @@ class Interpreter:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
             except OSError:
-                raise VerbaRuntimeError(f"I could not open the file called {filename}.", line_no=ln)
+                raise VerbaRuntimeError(f"I could not open the file called {filename}.", line_no=ln, col=col, line=raw)
             from .parser import parse
             from .errors import VerbaParseError
             try:
                 prog = parse(content)
                 self._exec_block(prog, env=env)
             except VerbaParseError as e:
-                raise VerbaRuntimeError(f"Error parsing imported file {filename}: {e}", line_no=ln)
+                raise VerbaRuntimeError(f"Error parsing imported file {filename}: {e}", line_no=ln, col=col, line=raw)
             return
 
         if isinstance(s, ast.AppendToFile):
@@ -312,7 +314,7 @@ class Interpreter:
                     html = response.read().decode()
                 env.set(s.target_name, html)
             except Exception:
-                raise VerbaRuntimeError(f"I could not fetch the URL: {url}.", line_no=ln)
+                raise VerbaRuntimeError(f"I could not fetch the URL: {url}.", line_no=ln, col=col, line=raw)
             return
 
         if isinstance(s, ast.FreeVar):
@@ -332,7 +334,7 @@ class Interpreter:
         if isinstance(s, ast.ObjectPropSet):
             obj = env.get(s.obj_name)
             if not isinstance(obj, Instance):
-                raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln)
+                raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln, col=col, line=raw)
             val = self._eval_expr(s.value, env=env, context="general")
             obj.props[s.prop] = val
             return
@@ -340,14 +342,14 @@ class Interpreter:
         if isinstance(s, ast.MethodCall):
             obj = env.get(s.obj_name)
             if not isinstance(obj, Instance):
-                raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln)
+                raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln, col=col, line=raw)
             self._call_method(obj, s.method, s.args, caller_env=env, line_no=ln)
             return
 
         if isinstance(s, ast.LetResultOfMethod):
             obj = env.get(s.obj_name)
             if not isinstance(obj, Instance):
-                raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln)
+                raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln, col=col, line=raw)
             val = self._call_method(obj, s.method, s.args, caller_env=env, line_no=ln)
             env.set(s.target_name, val)
             return
@@ -384,11 +386,11 @@ class Interpreter:
             import time
             task = env.get(s.task_name)
             if not isinstance(task, dict) or "done" not in task:
-                raise VerbaRuntimeError(f"Variable {s.task_name} is not a valid async task.", line_no=ln)
+                raise VerbaRuntimeError(f"Variable {s.task_name} is not a valid async task.", line_no=ln, col=col, line=raw)
             while not task["done"]:
                 time.sleep(0.01)
             if task["error"]:
-                raise VerbaRuntimeError(f"Async error: {task['error']}", line_no=ln)
+                raise VerbaRuntimeError(f"Async error: {task['error']}", line_no=ln, col=col, line=raw)
             env.set(s.target_name, task["result"])
             return
 
@@ -396,6 +398,8 @@ class Interpreter:
 
     def _eval_expr(self, e: ast.Expr, *, env: Environment, context: str) -> Any:
         ln = e.span.line_no
+        col = e.span.col
+        raw = e.span.line_content
 
         if isinstance(e, ast.ObjectNew):
             if e.class_name not in self.classes:
@@ -428,7 +432,7 @@ class Interpreter:
             if context == "say":
                 # In output, undefined names are treated as literal words (so "say hello." works).
                 return e.name
-            raise VerbaRuntimeError(f"The variable called {e.name} has not been defined yet.", line_no=ln)
+            raise VerbaRuntimeError(f"The variable called {e.name} has not been defined yet.", line_no=ln, col=col, line=raw)
 
         if isinstance(e, ast.BinaryOp):
             left = self._eval_expr(e.left, env=env, context=context)
@@ -444,11 +448,11 @@ class Interpreter:
                     return a * b
                 if e.op == "/":
                     if b == 0:
-                        raise VerbaRuntimeError("I cannot divide by zero.", line_no=ln)
+                        raise VerbaRuntimeError("I cannot divide by zero.", line_no=ln, col=col, line=raw)
                     return a / b
                 if e.op == "%":
                     if b == 0:
-                        raise VerbaRuntimeError("I cannot divide by zero.", line_no=ln)
+                        raise VerbaRuntimeError("I cannot divide by zero.", line_no=ln, col=col, line=raw)
                     return a % b
             raise VerbaRuntimeError("I did not understand that math operation.", line_no=ln)
 
@@ -456,6 +460,8 @@ class Interpreter:
 
     def _eval_bool(self, b: ast.BoolExpr, *, env: Environment) -> bool:
         ln = b.span.line_no
+        col = b.span.col
+        raw = b.span.line_content
         if isinstance(b, ast.Compare):
             left = self._eval_expr(b.left, env=env, context="general")
             right = self._eval_expr(b.right, env=env, context="general")
@@ -473,7 +479,7 @@ class Interpreter:
             if b.op in ["==", "!="]:
                 res = left == right
                 return res if b.op == "==" else (not res)
-            raise VerbaRuntimeError("I did not understand that comparison.", line_no=ln)
+            raise VerbaRuntimeError("I did not understand that comparison.", line_no=ln, col=col, line=raw)
 
         if isinstance(b, ast.BoolNot):
             return not self._eval_bool(b.inner, env=env)
@@ -481,7 +487,7 @@ class Interpreter:
             return self._eval_bool(b.left, env=env) and self._eval_bool(b.right, env=env)
         if isinstance(b, ast.BoolOr):
             return self._eval_bool(b.left, env=env) or self._eval_bool(b.right, env=env)
-        raise VerbaRuntimeError("I did not understand that condition.", line_no=ln)
+        raise VerbaRuntimeError("I did not understand that condition.", line_no=ln, col=col, line=raw)
 
     def _call(self, name: str, args: list[ast.Expr], *, caller_env: Environment, line_no: int) -> Any:
         if name not in self.functions:

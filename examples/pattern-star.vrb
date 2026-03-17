@@ -1,6 +1,6 @@
 asterisk = "*".
 
-define print triangle needing rows as follows.
+define print_triangle needing rows as follows.
     row = 1.
     while row <= rows:
         stars = a list of x.
@@ -18,6 +18,6 @@ define print triangle needing rows as follows.
     end.
 end.
 
-ask the user "how many rows do you want?" and save to row count.
+ask the user "how many rows do you want?" and save to row_count.
 
-run print triangle with row count.
+run print_triangle with row_count.

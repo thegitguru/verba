@@ -56,7 +56,7 @@ def repl() -> int:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="verba", description="Run Verba (natural English) programs.")
-    p.add_argument("file", nargs="?", help="Path to a .vb (Verba) file.")
+    p.add_argument("file", nargs="?", help="Path to a .vrb (Verba) file.")
     p.add_argument("--repl", action="store_true", help="Start an interactive REPL.")
 
     ns = p.parse_args(argv)

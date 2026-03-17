@@ -1,6 +1,6 @@
 note test imports
 
-import from file called "examples/my_module.vb".
+import from file called "examples/my_module.vrb".
 
 say "module loaded !".
 

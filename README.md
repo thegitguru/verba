@@ -21,13 +21,13 @@ python -m pip install -e .
 ### Run a Verba program
 
 ```bash
-python -m verba examples/full_example.vb
+python -m verba examples/full_example.vrb
 ```
 
 Or, if installed:
 
 ```bash
-verba examples/full_example.vb
+verba examples/full_example.vrb
 ```
 
 ### Start the REPL
@@ -168,7 +168,7 @@ remove green from colors.
 
 1-based indexing (item 1 is the first item):
 ```vb
-let first color be item 1 of colors.
+first_color = item 1 of colors.
 ```
 
 #### Functions
@@ -249,7 +249,7 @@ end.
 #### Imports
 
 ```vb
-import from file called "my_module.vb".
+import from file called "my_module.vrb".
 ```
 
 ---
@@ -285,8 +285,8 @@ append "Server Starting..." to file called "output.log".
 message = "hello".
 save message to file called "out.txt".
 
-load file called "out.txt" into loaded message.
-say loaded message.
+load file called "out.txt" into loaded_message.
+say loaded_message.
 
 delete file called "out.txt".
 ```
@@ -322,4 +322,4 @@ say "Async Web Request Finished! Result: ", result.
 
 ### Notes
 - Every single root-level statement must end with a period `.` or colon `:`.
-- When Verba cannot understand a line, it throws a plain-English error pointing directly at the line number context.
+- When Verba cannot understand a line, it throws a plain-English error pointing directly at the line and column number context.

@@ -1,13 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import List
+
+
+@dataclass(frozen=True)
+class Token:
+    value: str
+    line_no: int
+    col: int
+    raw_line: str
 
 
 @dataclass(frozen=True)
 class LineTokens:
     indent: int
     raw: str
-    tokens: list[str]
+    tokens: List[Token]
 
 
 def _count_indent(line: str) -> tuple[int, str]:
@@ -28,75 +37,75 @@ def _count_indent(line: str) -> tuple[int, str]:
     return indent, line[i:]
 
 
-def tokenize_line(line: str) -> LineTokens:
+def tokenize_line(line: str, line_no: int) -> LineTokens:
     raw_line = line.rstrip("\r\n")
     indent, rest = _count_indent(raw_line)
-    rest_stripped = rest.strip()
-    if not rest_stripped:
-        return LineTokens(indent=indent, raw=raw_line, tokens=[])
-
-    # Split by spaces; keep commas as separator tokens; keep periods only as terminators
-    # (removed from tokens).
-    # Verba's only allowed symbols are comma and period, so we treat any other punctuation
-    # as plain characters inside tokens (but programs should not use them).
-    s = rest_stripped
-    if s.endswith("."):
-        s = s[:-1].rstrip()
-
-    parts: list[str] = []
-    buf: list[str] = []
-    in_string = False
-    string_char = ""
-    for ch in s:
-        if in_string:
-            buf.append(ch)
-            if ch == string_char:
-                parts.append("".join(buf))
-                buf = []
-                in_string = False
-            continue
-
-        if ch in "\"'":
-            if buf:
-                parts.append("".join(buf))
-                buf = []
-            in_string = True
-            string_char = ch
-            buf.append(ch)
-            continue
-
-        if ch == " ":
-            if buf:
-                parts.append("".join(buf))
-                buf = []
-            continue
-        if ch in ",+-*/=<>!():[]":
-            if buf:
-                parts.append("".join(buf))
-                buf = []
-            parts.append(ch)
-            continue
-        buf.append(ch)
-    if buf:
-        parts.append("".join(buf))
-
-    # Recombine obvious 2-char tokens (+=, -=, ==, !=, <=, >=, *=, /=)
-    final_parts: list[str] = []
+    
+    # Calculate column offset from indent
+    # Note: _count_indent returns the rest of the line, but we need the actual physical 
+    # position for column reporting.
+    current_col = len(raw_line) - len(rest)
+    
+    s = rest
+    tokens: List[Token] = []
+    
     i = 0
-    while i < len(parts):
-        if i + 1 < len(parts):
-            pair = parts[i] + parts[i+1]
-            if pair in ["+=", "-=", "*=", "/=", "==", "!=", "<=", ">="]:
-                final_parts.append(pair)
-                i += 2
-                continue
-        final_parts.append(parts[i])
-        i += 1
+    while i < len(s):
+        ch = s[i]
+        
+        # Skip spaces but keep track of column
+        if ch == " ":
+            i += 1
+            continue
             
-    # Preserve original spelling (including case). The parser does case-insensitive
-    # keyword matching.
-    return LineTokens(indent=indent, raw=raw_line, tokens=final_parts)
+        start_col = current_col + i
+        
+        # Handle strings
+        if ch in "\"'":
+            quote = ch
+            buf = [ch]
+            start_i = i
+            i += 1
+            while i < len(s) and s[i] != quote:
+                buf.append(s[i])
+                i += 1
+            if i < len(s):
+                buf.append(quote)
+                i += 1
+            tokens.append(Token("".join(buf), line_no, start_col, raw_line))
+            continue
+            
+        # Handle symbols
+        if ch in ",+-*/=<>!():[].":
+            # Check for 2-char tokens
+            if i + 1 < len(s):
+                pair = ch + s[i+1]
+                if pair in ["+=", "-=", "*=", "/=", "==", "!=", "<=", ">="]:
+                    tokens.append(Token(pair, line_no, start_col, raw_line))
+                    i += 2
+                    continue
+            tokens.append(Token(ch, line_no, start_col, raw_line))
+            i += 1
+            continue
+            
+        # Handle words/numbers
+        buf = []
+        while i < len(s):
+            ch = s[i]
+            if ch.isspace() or ch in ",+-*/=<>!():[]":
+                break
+            if ch == ".":
+                # Split at dot ONLY if it is at the end of the line or followed by a space
+                if i + 1 >= len(s) or s[i+1].isspace():
+                    break
+            buf.append(ch)
+            i += 1
+        if buf:
+            tokens.append(Token("".join(buf), line_no, start_col, raw_line))
+            
+    return LineTokens(indent=indent, raw=raw_line, tokens=tokens)
 
 
 def tokenize_program(source: str) -> list[LineTokens]:
-    return [tokenize_line(line) for line in source.splitlines()]
+    lines = source.splitlines()
+    return [tokenize_line(line, idx + 1) for idx, line in enumerate(lines)]
