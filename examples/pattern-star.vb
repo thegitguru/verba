@@ -1,23 +1,23 @@
-let asterisk be the word *.
+asterisk = "*".
 
 define print triangle needing rows as follows.
-    let row be the number 1.
-    keep doing the following while row is at most rows.
-        let stars be a list of x.
+    row = 1.
+    while row <= rows:
+        stars = a list of x.
         remove x from stars.
-        let col be the number 1.
-        keep doing the following while col is at most row.
+        col = 1.
+        while col <= row:
             add asterisk to stars.
-            increase col by 1.
-        end keep.
-        for each item in stars, do the following.
+            col += 1.
+        end.
+        for item in stars:
             display item.
-        end for.
+        end.
         say.
-        increase row by 1.
-    end keep.
-end define.
+        row += 1.
+    end.
+end.
 
-ask the user quote how many rows do you want and save to row count.
+ask the user "how many rows do you want?" and save to row count.
 
 run print triangle with row count.

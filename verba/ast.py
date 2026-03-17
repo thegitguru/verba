@@ -211,3 +211,17 @@ class LoadFile(Stmt):
     span: Span
     filename: Expr
     target_name: str
+
+
+@dataclass(frozen=True)
+class TryBlock(Stmt):
+    span: Span
+    try_body: list[Stmt]
+    catch_body: Optional[list[Stmt]] = None
+    error_name: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class Import(Stmt):
+    span: Span
+    filename: Expr

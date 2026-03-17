@@ -1,8 +1,7 @@
 note demonstrate saving and loading text.
 
-let message be the word hello.
-save message to file called quote out.txt.
+message = "hello".
+save message to file called "out.txt".
 
-load file called quote out.txt into loaded message.
+load file called "out.txt" into loaded message.
 say loaded message.
-

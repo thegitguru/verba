@@ -245,6 +245,34 @@ class Interpreter:
             env.set(s.target_name, content)
             return
 
+        if isinstance(s, ast.TryBlock):
+            try:
+                self._exec_block(s.try_body, env=env)
+            except VerbaRuntimeError as e:
+                if s.catch_body is not None:
+                    err_env = Environment(parent=env)
+                    if s.error_name:
+                        err_env.set(s.error_name, str(e))
+                    self._exec_block(s.catch_body, env=err_env)
+            return
+
+        if isinstance(s, ast.Import):
+            filename = self._eval_expr(s.filename, env=env, context="general")
+            try:
+                path = str(filename)
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except OSError:
+                raise VerbaRuntimeError(f"I could not open the file called {filename}.", line_no=ln)
+            from .parser import parse
+            from .errors import VerbaParseError
+            try:
+                prog = parse(content)
+                self._exec_block(prog, env=env)
+            except VerbaParseError as e:
+                raise VerbaRuntimeError(f"Error parsing imported file {filename}: {e}", line_no=ln)
+            return
+
         raise VerbaRuntimeError("I reached a statement I cannot execute yet.", line_no=ln)
 
     def _eval_expr(self, e: ast.Expr, *, env: Environment, context: str) -> Any:

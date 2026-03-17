@@ -34,6 +34,8 @@ from .ast import (
     Stmt,
     VarRef,
     While,
+    TryBlock,
+    Import,
 )
 from .errors import VerbaParseError
 from .tokenize import LineTokens, tokenize_program
@@ -44,9 +46,9 @@ def _lc(tokens: list[str]) -> list[str]:
 
 
 def _require_period(line: LineTokens, line_no: int) -> None:
-    if not line.raw.strip().endswith("."):
+    if not line.raw.strip().endswith(".") and not line.raw.strip().endswith(":"):
         raise VerbaParseError(
-            "Every statement must end with a period.",
+            "Every statement must end with a period (or a colon for block starters).",
             line_no=line_no,
             line=line.raw,
         )
@@ -60,14 +62,26 @@ def _join_name(words: list[str]) -> str:
 _COMPARISONS: list[tuple[list[str], str]] = [
     (["is", "not"], "!="),
     (["does", "not", "equal"], "!="),
+    (["!", "="], "!="),
+    (["!="], "!="),
+    (["<", ">"], "!="),
     (["is", "greater", "than"], ">"),
     (["is", "more", "than"], ">"),
+    ([">"], ">"),
     (["is", "less", "than"], "<"),
     (["is", "fewer", "than"], "<"),
+    (["<"], "<"),
     (["is", "at", "least"], ">="),
+    ([">", "="], ">="),
+    ([">="], ">="),
     (["is", "at", "most"], "<="),
+    (["<", "="], "<="),
+    (["<="], "<="),
     (["equals"], "=="),
     (["is"], "=="),
+    (["=", "="], "=="),
+    (["=="], "=="),
+    (["="], "=="),
 ]
 
 
@@ -110,6 +124,9 @@ def _parse_atom(tokens: list[str], tokens_lc: list[str], i: int, *, span: Span) 
     num = _parse_number(tok)
     if num is not None:
         return Literal(span, num), i + 1
+
+    if (tok.startswith('"') and tok.endswith('"')) or (tok.startswith("'") and tok.endswith("'")):
+        return Literal(span, tok[1:-1]), i + 1
 
     # Word literals are bare single tokens (e.g. hello, Alice). Multi-word text uses "quote".
     return VarRef(span, _join_name([tok])), i + 1
@@ -311,21 +328,12 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         return Note(span, " ".join(tokens[1:]))
 
     # Block endings
-    if tokens_lc[:2] == ["end", "if"]:
+    if tokens_lc[0] == "end":
         _require_period(lt, line_no)
-        raise VerbaParseError("I found 'end if' without a matching 'if'.", line_no=line_no, line=lt.raw)
-    if tokens_lc[:2] == ["end", "repeat"]:
-        _require_period(lt, line_no)
-        raise VerbaParseError("I found 'end repeat' without a matching 'repeat'.", line_no=line_no, line=lt.raw)
-    if tokens_lc[:2] == ["end", "keep"]:
-        _require_period(lt, line_no)
-        raise VerbaParseError("I found 'end keep' without a matching 'keep doing'.", line_no=line_no, line=lt.raw)
-    if tokens_lc[:2] == ["end", "for"]:
-        _require_period(lt, line_no)
-        raise VerbaParseError("I found 'end for' without a matching 'for each'.", line_no=line_no, line=lt.raw)
-    if tokens_lc[:2] == ["end", "define"]:
-        _require_period(lt, line_no)
-        raise VerbaParseError("I found 'end define' without a matching 'define'.", line_no=line_no, line=lt.raw)
+        # Any "end" can end any block (like standard end.)
+        raise VerbaParseError(
+            "I found an 'end' without a matching block to end.", line_no=line_no, line=lt.raw
+        )
 
     # let ... be ...
     if tokens_lc[0] == "let":
@@ -354,14 +362,17 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             try:
                 be_i = tokens_lc.index("be")
             except ValueError:
-                raise VerbaParseError("I expected 'be' in this let statement.", line_no=line_no, line=lt.raw)
+                try:
+                    be_i = tokens_lc.index("=")
+                except ValueError:
+                    raise VerbaParseError("I expected 'be' or '=' in this let statement.", line_no=line_no, line=lt.raw)
             target = _join_name(tokens[1:be_i])
-            expected = ["be", "the", "result", "of", "running"]
-            if tokens_lc[be_i : be_i + len(expected)] != expected:
+            expected = ["the", "result", "of", "running"]
+            if tokens_lc[be_i] not in ["be", "="] or tokens_lc[be_i + 1 : be_i + 1 + len(expected)] != expected:
                 # continue to normal let parsing
                 pass
             else:
-                j = be_i + len(expected)
+                j = be_i + 1 + len(expected)
                 if j >= len(tokens):
                     raise VerbaParseError("I expected a function name after 'running'.", line_no=line_no)
                 # Function name goes until optional "with"
@@ -381,7 +392,10 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         try:
             be_i = tokens_lc.index("be")
         except ValueError:
-            raise VerbaParseError("I expected 'be' in this let statement.", line_no=line_no, line=lt.raw)
+            try:
+                be_i = tokens_lc.index("=")
+            except ValueError:
+                raise VerbaParseError("I expected 'be' or '=' in this let statement.", line_no=line_no, line=lt.raw)
         name = _join_name(tokens[1:be_i])
         rest = tokens[be_i + 1 :]
         rest_lc = tokens_lc[be_i + 1 :]
@@ -438,6 +452,37 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         return SetVar(span, name, value)
 
+    # Check for math assignment: x += 5.
+    for idx, t in enumerate(tokens_lc):
+        if t in ["+=", "-=", "*=", "/="]:
+            by_i = idx
+            break
+    else:
+        by_i = -1
+    
+    if by_i != -1:
+        name = _join_name(tokens[:by_i])
+        value = parse_expr(tokens[by_i + 1 :], line_no=line_no)
+        cur.i += 1
+        op = tokens_lc[by_i]
+        if op == "+=": return Increase(span, name, value)
+        if op == "-=": return Decrease(span, name, value)
+        if op == "*=": return SetVar(span, name, BinaryOp(span, "*", VarRef(span, name), value))
+        if op == "/=": return SetVar(span, name, BinaryOp(span, "/", VarRef(span, name), value))
+
+    # Check for concise definition: x = 5.
+    try:
+        eq_i = tokens_lc.index("=")
+    except ValueError:
+        eq_i = -1
+        
+    if eq_i != -1 and eq_i + 1 < len(tokens_lc) and tokens_lc[eq_i+1] != "=":
+        # We don't want to parse `x == 5` here.
+        name = _join_name(tokens[:eq_i])
+        value = parse_expr(tokens[eq_i + 1 :], line_no=line_no)
+        cur.i += 1
+        return Let(span, name, value)
+
     # increase/decrease
     if tokens_lc[0] in ["increase", "decrease"]:
         _require_period(lt, line_no)
@@ -455,7 +500,11 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
     # say/display
     if tokens_lc[0] in ["say", "display"]:
         _require_period(lt, line_no)
-        parts = _split_by_word(tokens[1:], word="and")
+        
+        # Helper: swap commas out for "and" behind the scenes to keep the logic running flawlessly
+        args_t = [t if t != "," else "and" for t in tokens[1:]]
+        
+        parts = _split_by_word(args_t, word="and")
         values = [_parse_say_value(p, line_no=line_no) for p in parts if p]
         cur.i += 1
         return Say(span, values, newline=tokens_lc[0] == "say")
@@ -473,24 +522,34 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             name = _join_name(tokens[4:])
             cur.i += 1
             return Ask(span, name)
-        # ask the user quote <prompt...> and save to <name>
+        # ask the user "prompt..." and save to <name>
         if tokens_lc[:3] == ["ask", "the", "user"]:
             if "save" in tokens_lc and "to" in tokens_lc:
-                try:
-                    quote_i = tokens_lc.index("quote")
-                    save_i = tokens_lc.index("save")
-                    to_i = tokens_lc.index("to", save_i)
-                except ValueError:
+                save_i = tokens_lc.index("save")
+                to_i = tokens_lc.index("to", save_i)
+                
+                if tokens_lc[3] == "quote":
+                    prompt_tokens = tokens[4:save_i]
+                else:
+                    prompt_tokens = tokens[3:save_i]
+                    
+                if not prompt_tokens:
                     raise VerbaParseError(
-                        "I expected 'quote ... and save to ...' in this ask statement.",
+                        "I expected a prompt between 'user' and 'and save to'.",
                         line_no=line_no,
                         line=lt.raw,
                     )
-                prompt_tokens = tokens[quote_i + 1 : save_i]
+                
                 # Optional 'and' right before save
                 if prompt_tokens and prompt_tokens[-1].lower() == "and":
                     prompt_tokens = prompt_tokens[:-1]
                 prompt = " ".join(prompt_tokens).strip()
+
+                if prompt.startswith('"') and prompt.endswith('"'):
+                    prompt = prompt[1:-1]
+                elif prompt.startswith("'") and prompt.endswith("'"):
+                    prompt = prompt[1:-1]
+                
                 name = _join_name(tokens[to_i + 1 :])
                 cur.i += 1
                 return Ask(span, name, prompt=prompt)
@@ -528,6 +587,15 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         target_name = _join_name(tokens[into_i + 1 :])
         cur.i += 1
         return LoadFile(span, filename_expr, target_name)
+        
+    if tokens_lc[0] == "import":
+        _require_period(lt, line_no)
+        # import from file called [filename].
+        if tokens_lc[1:4] != ["from", "file", "called"]:
+            raise VerbaParseError("An import line must say 'import from file called'.", line_no=line_no, line=lt.raw)
+        filename_expr = parse_expr(tokens[4:], line_no=line_no)
+        cur.i += 1
+        return Import(span, filename_expr)
 
     # list ops: add/remove
     if tokens_lc[0] == "add":
@@ -557,16 +625,22 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         # handled earlier in 'let' branch; keep unreachable
         pass
 
-    # if ... , do the following.
+    # if ... , do the following. or if ... :
     if tokens_lc[0] == "if":
         _require_period(lt, line_no)
-        if not (len(tokens_lc) >= 4 and tokens_lc[-3:] == ["do", "the", "following"]):
+        
+        cond_tokens = tokens[1:]
+        if cond_tokens and cond_tokens[-1] == ":":
+            cond_tokens = cond_tokens[:-1]
+        elif len(cond_tokens) >= 3 and _lc(cond_tokens)[-3:] == ["do", "the", "following"]:
+            cond_tokens = cond_tokens[:-3]
+        else:
             raise VerbaParseError(
-                "An if line must end with 'do the following.'",
+                "An if line must end with 'do the following.' or ':'",
                 line_no=line_no,
                 line=lt.raw,
             )
-        cond_tokens = tokens[1:-3]
+        
         if cond_tokens and cond_tokens[-1] == ",":
             cond_tokens = cond_tokens[:-1]
         condition = parse_condition(cond_tokens, line_no=line_no)
@@ -579,21 +653,24 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             nxt = cur.lines[cur.i]
             nxt_no = cur.i + 1
             nxt_lc = _lc(nxt.tokens)
-            if nxt.indent == expected_indent and len(nxt_lc) >= 4 and (
-                (nxt_lc[:3] == ["otherwise", "do", "the"] and nxt_lc[-1] == "following") or
-                (nxt_lc[:3] == ["else", "do", "the"] and nxt_lc[-1] == "following")
-            ):
+            is_otherwise = (
+                (len(nxt_lc) >= 4 and nxt_lc[:3] == ["otherwise", "do", "the"] and nxt_lc[-1] == "following") or
+                (len(nxt_lc) >= 4 and nxt_lc[:3] == ["else", "do", "the"] and nxt_lc[-1] == "following") or
+                nxt_lc == ["else", ":"] or
+                nxt_lc == ["otherwise", ":"]
+            )
+            if nxt.indent == expected_indent and is_otherwise:
                 _require_period(nxt, nxt_no)
                 cur.i += 1
                 else_body = _parse_block(cur, expected_indent=expected_indent + 4)
 
         # expect end if.
         if cur.i >= len(cur.lines):
-            raise VerbaParseError("I expected 'end if.'", line_no=line_no)
+            raise VerbaParseError("I expected 'end.'", line_no=line_no)
         end_line = cur.lines[cur.i]
         end_no = cur.i + 1
-        if end_line.indent != expected_indent or _lc(end_line.tokens)[:2] != ["end", "if"]:
-            raise VerbaParseError("I expected 'end if.'", line_no=end_no, line=end_line.raw)
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
         _require_period(end_line, end_no)
         cur.i += 1
         return If(span, condition, then_body, else_body)
@@ -636,8 +713,29 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             raise VerbaParseError("I expected 'end keep.'", line_no=line_no)
         end_line = cur.lines[cur.i]
         end_no = cur.i + 1
-        if end_line.indent != expected_indent or _lc(end_line.tokens)[:2] != ["end", "keep"]:
-            raise VerbaParseError("I expected 'end keep.'", line_no=end_no, line=end_line.raw)
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
+        _require_period(end_line, end_no)
+        cur.i += 1
+        return While(span, cond, body)
+
+    # while ...:
+    if tokens_lc[0] == "while":
+        _require_period(lt, line_no)
+        
+        cond_tokens = tokens[1:]
+        if cond_tokens and cond_tokens[-1] == ":":
+            cond_tokens = cond_tokens[:-1]
+        
+        cond = parse_condition(cond_tokens, line_no=line_no)
+        cur.i += 1
+        body = _parse_block(cur, expected_indent=expected_indent + 4)
+        if cur.i >= len(cur.lines):
+            raise VerbaParseError("I expected 'end.'", line_no=line_no)
+        end_line = cur.lines[cur.i]
+        end_no = cur.i + 1
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
         _require_period(end_line, end_no)
         cur.i += 1
         return While(span, cond, body)
@@ -661,8 +759,29 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             raise VerbaParseError("I expected 'end for.'", line_no=line_no)
         end_line = cur.lines[cur.i]
         end_no = cur.i + 1
-        if end_line.indent != expected_indent or _lc(end_line.tokens)[:2] != ["end", "for"]:
-            raise VerbaParseError("I expected 'end for.'", line_no=end_no, line=end_line.raw)
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
+        _require_period(end_line, end_no)
+        cur.i += 1
+        return ForEach(span, item_name, list_name, body)
+        
+    # for item in list:
+    if tokens_lc[0] == "for" and "in" in tokens_lc and tokens_lc[1] != "each":
+        _require_period(lt, line_no)
+        if tokens_lc[-1] != ":":
+            raise VerbaParseError("A for line must end with ':'", line_no=line_no, line=lt.raw)
+        in_i = tokens_lc.index("in")
+        item_name = _join_name(tokens[1:in_i])
+        list_tokens = tokens[in_i + 1 : -1]
+        list_name = _join_name(list_tokens)
+        cur.i += 1
+        body = _parse_block(cur, expected_indent=expected_indent + 4)
+        if cur.i >= len(cur.lines):
+            raise VerbaParseError("I expected 'end.'", line_no=line_no)
+        end_line = cur.lines[cur.i]
+        end_no = cur.i + 1
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
         _require_period(end_line, end_no)
         cur.i += 1
         return ForEach(span, item_name, list_name, body)
@@ -691,16 +810,17 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             raise VerbaParseError("I expected 'end define.'", line_no=line_no)
         end_line = cur.lines[cur.i]
         end_no = cur.i + 1
-        if end_line.indent != expected_indent or _lc(end_line.tokens)[:2] != ["end", "define"]:
-            raise VerbaParseError("I expected 'end define.'", line_no=end_no, line=end_line.raw)
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
         _require_period(end_line, end_no)
         cur.i += 1
         return Define(span, name, params, body)
 
-    # give back ...
-    if tokens_lc[:2] == ["give", "back"]:
+    # give ... or give back ...
+    if tokens_lc[:2] == ["give", "back"] or tokens_lc[0] == "give":
         _require_period(lt, line_no)
-        value = parse_expr(tokens[2:], line_no=line_no)
+        value_start = 2 if tokens_lc[:2] == ["give", "back"] else 1
+        value = parse_expr(tokens[value_start:], line_no=line_no)
         cur.i += 1
         return GiveBack(span, value)
 
@@ -722,6 +842,44 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         # This branch is normally pre-empted by the general 'let' handler; we keep this
         # pattern here for clarity if you later prefer strict ordering.
         pass
+
+    # try to do the following.
+    if tokens_lc[:5] == ["try", "to", "do", "the", "following"]:
+        _require_period(lt, line_no)
+        cur.i += 1
+        try_body = _parse_block(cur, expected_indent=expected_indent + 4)
+        catch_body: Optional[list[Stmt]] = None
+        error_name: Optional[str] = None
+        
+        if cur.i < len(cur.lines):
+            nxt = cur.lines[cur.i]
+            nxt_no = cur.i + 1
+            nxt_lc = _lc(nxt.tokens)
+            if nxt.indent == expected_indent and len(nxt_lc) >= 2 and nxt_lc[:2] == ["on", "error"]:
+                clean_nxt_lc = [t for t in nxt_lc if t != ","]
+                clean_nxt_tokens = [t for t in nxt.tokens if t != ","]
+                if len(clean_nxt_lc) >= 3 and clean_nxt_lc[-3:] == ["do", "the", "following"]:
+                    _require_period(nxt, nxt_no)
+                    if "saving" in clean_nxt_lc and "to" in clean_nxt_lc:
+                        sav_i = clean_nxt_lc.index("saving")
+                        to_i = clean_nxt_lc.index("to")
+                        if to_i == sav_i + 1:
+                            do_i = len(clean_nxt_lc) - 3
+                            error_name = _join_name(clean_nxt_tokens[to_i + 1 : do_i])
+                    cur.i += 1
+                    catch_body = _parse_block(cur, expected_indent=expected_indent + 4)
+                else:
+                    raise VerbaParseError("I expected 'on error, do the following.' or 'on error saving to [variable], do the following.'", line_no=nxt_no, line=nxt.raw)
+        
+        if cur.i >= len(cur.lines):
+            raise VerbaParseError("I expected 'end try.'", line_no=line_no)
+        end_line = cur.lines[cur.i]
+        end_no = cur.i + 1
+        if end_line.indent != expected_indent or _lc(end_line.tokens)[0] != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, line=end_line.raw)
+        _require_period(end_line, end_no)
+        cur.i += 1
+        return TryBlock(span, try_body, catch_body, error_name)
 
     raise VerbaParseError(
         f"I did not understand line {line_no}. Did you mean to use say, let, set, if, repeat, keep, define, run, or ask?",
@@ -770,8 +928,13 @@ def _parse_say_value(tokens: list[str], *, line_no: int) -> object:
     # If it looks like math, parse as an expression. Otherwise:
     # - a single token can be a variable name OR a single-word literal (resolved at runtime in say-context)
     # - multiple tokens are treated as a literal phrase without requiring "quote"
-    if any(t in ["plus", "minus", "times", "divided", "remainder", "+", "-", "*", "/"] for t in tokens_lc):
+    if any(t in ["+", "-", "*", "/", "plus", "minus", "times", "divided", "remainder"] for t in tokens_lc):
         return parse_expr(tokens, line_no=line_no)
     if len(tokens) == 1:
         return parse_expr(tokens, line_no=line_no)
+    
+    # If it is a string enclosed in double or single quotes without the 'quote' keyword mapping
+    if (tokens[0].startswith('"') and tokens[-1].endswith('"')) or (tokens[0].startswith("'") and tokens[-1].endswith("'")):
+        return Literal(Span(line_no), " ".join(tokens)[1:-1])
+
     return Literal(Span(line_no), " ".join(tokens))
