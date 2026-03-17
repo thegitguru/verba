@@ -486,6 +486,15 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         return SetVar(span, name, value)
 
+    # Prevent keywords from being evaluated as LHS of a concise assignment
+    _STATEMENT_KEYWORDS = [
+        "say", "print", "display", "ask", "if", "for", "while", "keep", 
+        "repeat", "define", "async", "run", "let", "set", "increase", 
+        "decrease", "save", "load", "import", "class", "free", "delete", 
+        "fetch", "append", "note", "try", "otherwise", "else", "end", "give", "return"
+    ]
+    is_keyword_stmt = tokens_lc[0] in _STATEMENT_KEYWORDS
+
     # Check for math assignment: x += 5.
     for idx, t in enumerate(tokens_lc):
         if t in ["+=", "-=", "*=", "/="]:
@@ -494,7 +503,7 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
     else:
         by_i = -1
     
-    if by_i != -1:
+    if by_i != -1 and not is_keyword_stmt:
         name = _join_name(tokens[:by_i])
         value = parse_expr(tokens[by_i + 1 :], line_no=line_no)
         cur.i += 1
@@ -510,7 +519,7 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
     except ValueError:
         eq_i = -1
         
-    if eq_i != -1 and eq_i + 1 < len(tokens_lc) and tokens_lc[eq_i+1] != "=":
+    if eq_i != -1 and eq_i + 1 < len(tokens_lc) and tokens_lc[eq_i+1] != "=" and not is_keyword_stmt:
         # We don't want to parse `x == 5` here.
         name = _join_name(tokens[:eq_i])
         val_tc = tokens_lc[eq_i+1:]
