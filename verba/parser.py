@@ -1046,10 +1046,15 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
                         sav_i = clean_nxt_lc.index("saving")
                         to_i = clean_nxt_lc.index("to")
                         if to_i == sav_i + 1:
-                            if clean_nxt_lc[-1] == ":":
+                            if clean_nxt_lc[-1] in [":", "."]:
                                 do_i = len(clean_nxt_lc) - 1
-                            else:
+                            elif clean_nxt_lc[-3:-1] == ["do", "the"] and clean_nxt_lc[-1].startswith("following"):
+                                # If it ends with "following." the token might be "following."
                                 do_i = len(clean_nxt_lc) - 3
+                            else:
+                                # Fallback/Verbose: "do the following ."
+                                do_i = len(clean_nxt_lc) - 3
+                                if clean_nxt_lc[-1] == ".": do_i -= 1
                             error_name = _join_name(clean_nxt_tokens[to_i + 1 : do_i], line_no=nxt_no)
                     cur.i += 1
                     catch_body = _parse_block(cur, expected_indent=expected_indent + 4)
