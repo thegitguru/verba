@@ -1,6 +1,6 @@
 note this program asks for a name and age, then greets the user.
 
-define greet person needing name, age as follows.
+define greet_person needing name, age as follows.
     say "hello ", name.
     if age < 18:
         say "you are a minor.".
@@ -10,9 +10,9 @@ define greet person needing name, age as follows.
 end.
 
 ask the user "what is your name?" and save to username.
-ask the user "how old are you?" and save to user age.
+ask the user "how old are you?" and save to user_age.
 
-run greet person with username, user age.
+run greet_person with username, user_age.
 
 counter = 1.
 while counter <= 3:

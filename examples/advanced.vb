@@ -3,7 +3,7 @@ class Person:
         self.name = first_name.
     end.
     define walk as follows:
-        say self.name, " is walking.".
+        say self.name, "is walking.".
     end.
 end.
 

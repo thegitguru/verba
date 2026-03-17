@@ -67,9 +67,14 @@ def _require_period(line: LineTokens, line_no: int) -> None:
         )
 
 
-def _join_name(words: list[str]) -> str:
-    # Variable/function names are stored as normalized lowercase words joined by spaces.
-    return " ".join([w.lower() for w in words]).strip()
+def _join_name(words: list[str], *, line_no: int = 0) -> str:
+    # Variable/function names must be a single word (no spaces allowed).
+    if len(words) > 1:
+        raise VerbaParseError(
+            f"I found a multi-word name: '{' '.join(words)}'. Names must be a single word without spaces.",
+            line_no=line_no
+        )
+    return words[0].lower().strip() if words else ""
 
 
 _COMPARISONS: list[tuple[list[str], str]] = [
@@ -491,9 +496,21 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         "say", "print", "display", "ask", "if", "for", "while", "keep", 
         "repeat", "define", "async", "run", "let", "set", "increase", 
         "decrease", "save", "load", "import", "class", "free", "delete", 
-        "fetch", "append", "note", "try", "otherwise", "else", "end", "give", "return"
+        "fetch", "append", "note", "try", "otherwise", "else", "end", "give", "return",
+        "await"
     ]
     is_keyword_stmt = tokens_lc[0] in _STATEMENT_KEYWORDS
+
+    if tokens_lc[0] == "await":
+        _require_period(lt, line_no)
+        # await [target] = [task].
+        if "=" in tokens_lc:
+            eq_i = tokens_lc.index("=")
+            target = _join_name(tokens[1:eq_i])
+            task = _join_name(tokens[eq_i + 1 :])
+            cur.i += 1
+            return AwaitStmt(span, target, task)
+        raise VerbaParseError("I expected 'await [target] = [task].'", line_no=line_no)
 
     # Check for math assignment: x += 5.
     for idx, t in enumerate(tokens_lc):
@@ -1091,17 +1108,4 @@ def _split_by_word(tokens: list[str], *, word: str) -> list[list[str]]:
 def _parse_say_value(tokens: list[str], *, line_no: int) -> object:
     if not tokens:
         raise VerbaParseError("I expected something to say.", line_no=line_no)
-    tokens_lc = _lc(tokens)
-    # If it looks like math, parse as an expression. Otherwise:
-    # - a single token can be a variable name OR a single-word literal (resolved at runtime in say-context)
-    # - multiple tokens are treated as a literal phrase without requiring "quote"
-    if any(t in ["+", "-", "*", "/", "plus", "minus", "times", "divided", "remainder"] for t in tokens_lc):
-        return parse_expr(tokens, line_no=line_no)
-    if len(tokens) == 1:
-        return parse_expr(tokens, line_no=line_no)
-    
-    # If it is a string enclosed in double or single quotes without the 'quote' keyword mapping
-    if (tokens[0].startswith('"') and tokens[-1].endswith('"')) or (tokens[0].startswith("'") and tokens[-1].endswith("'")):
-        return Literal(Span(line_no), " ".join(tokens)[1:-1])
-
-    return Literal(Span(line_no), " ".join(tokens))
+    return parse_expr(tokens, line_no=line_no)

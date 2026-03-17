@@ -26,9 +26,9 @@ while y < 8:
     y += 1.
 end.
 
-define add two needing a, b as follows.
+define add_two needing a, b as follows.
     give a + b.
 end.
 
-let res = the result of running add two with 1, 2.
+let res = the result of running add_two with 1, 2.
 say "function result: ", res.

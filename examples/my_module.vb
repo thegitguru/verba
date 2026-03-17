@@ -1,4 +1,4 @@
-define multiply things needing a, b:
+define multiply_things needing a, b:
     give a * b.
 end.
 
