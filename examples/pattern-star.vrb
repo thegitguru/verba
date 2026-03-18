@@ -1,6 +1,6 @@
 asterisk = "*".
 
-define print_triangle needing rows as follows.
+define print_triangle needing rows:
     row = 1.
     while row <= rows:
         stars = a list of x.

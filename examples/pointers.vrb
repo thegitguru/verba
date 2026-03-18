@@ -1,21 +1,19 @@
-/- pointers.vrb — native pointer semantics in Verba.
-
-/- 1. take a reference with ref / &
+/- 1. take a reference with &
 x = 42.
-ptr = ref x.
+ptr = &x.
 say "ptr points to x, value: ", deref ptr.
 
 /- 2. write through a pointer — mutates x directly
 deref ptr = 100.
 say "after deref write, x = ", x.
 
-/- 3. verbose syntax: point / value at / set value at
+/- 3. re-seat at a different variable
 y = 7.
-point ptr to y.
-say "ptr re-seated to y, value at ptr: ", value at ptr.
+ptr = &y.
+say "ptr re-seated to y, value: ", deref ptr.
 
-set value at ptr to 99.
-say "after set value at ptr, y = ", y.
+deref ptr = 99.
+say "after deref write, y = ", y.
 
 /- 4. null pointer and null checks
 p = null.
@@ -23,18 +21,18 @@ if p is null:
     say "p is null.".
 end.
 
-p = ref x.
+p = &x.
 if p is not null:
     say "p is not null, value: ", deref p.
 end.
 
 /- 5. passing a pointer to a function — mutates the original variable
-define double_it needing n as follows.
+define double_it needing n:
     deref n = deref n * 2.
 end.
 
 val = 5.
-vptr = ref val.
+vptr = &val.
 run double_it with vptr.
 say "after double_it, val = ", val.
 

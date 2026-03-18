@@ -1,6 +1,6 @@
 note this program asks for a name and age, then greets the user.
 
-define greet_person needing name, age as follows.
+define greet_person needing name, age:
     say "hello ", name.
     if age < 18:
         say "you are a minor.".
@@ -20,4 +20,4 @@ while counter <= 3:
     counter += 1.
 end.
 
-say goodbye.
+say "goodbye".
