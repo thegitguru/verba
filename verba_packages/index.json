@@ -1,0 +1,14 @@
+{
+  "packages": {
+    "mathkit": {
+      "url": "http://localhost:8900/mathkit.vrb",
+      "version": "1.0.0",
+      "description": "Math utility functions: add, subtract, multiply, divide, power, clamp, average"
+    },
+    "verbix_utils": {
+      "url": "http://localhost:8900/verbix_utils.vrb",
+      "version": "1.0.0",
+      "description": "HTTP response helpers: format_response, is_success, build_auth_header, truncate"
+    }
+  }
+}

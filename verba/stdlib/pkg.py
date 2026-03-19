@@ -1,11 +1,12 @@
 """verbix — Verbix package manager stdlib module for Verba.
 
 Available in every script as `verbix`:
-    verbix.install with url
+    verbix.install with name_or_url
     verbix.uninstall with name
     verbix.list
     verbix.info with name
-    verbix.installed with name   -> "true" / "false"
+    verbix.installed with name
+    verbix.search with query
 """
 from __future__ import annotations
 
@@ -21,19 +22,22 @@ from verba.pkg_registry import (
 )
 
 
-def _install(url: str) -> str:
-    from urllib.parse import urlparse
-    name = Path(urlparse(url).path).name
-    if not name:
-        raise RuntimeError(f"Cannot determine package name from URL: {url}")
-    if not name.endswith(".vrb"):
-        name += ".vrb"
+def _resolve(name_or_url: str) -> tuple[str, str, str]:
+    from verba.verbix_cli import _resolve as cli_resolve
+    return cli_resolve(name_or_url)
+
+
+def _install(name_or_url: str) -> str:
+    try:
+        url, pkg_name, version = _resolve(name_or_url)
+    except RuntimeError as e:
+        return str(e)
     MODULES_DIR.mkdir(exist_ok=True)
     with urllib.request.urlopen(url) as r:
         content = r.read()
-    (MODULES_DIR / name).write_bytes(content)
-    record_install(name, url)
-    return f"Installed {name}"
+    (MODULES_DIR / pkg_name).write_bytes(content)
+    record_install(pkg_name, url, version)
+    return f"Installed {pkg_name} v{version}"
 
 
 def _uninstall(name: str) -> str:
@@ -73,12 +77,27 @@ def _installed(name: str) -> str:
     return "true" if get_package(name) is not None else "false"
 
 
+def _search(query: str) -> str:
+    from verba.verbix_cli import _fetch_index
+    try:
+        index = _fetch_index()
+    except RuntimeError as e:
+        return str(e)
+    q = query.lower()
+    results = {k: v for k, v in index.items() if q in k or q in v.get("description", "").lower()}
+    if not results:
+        return f"No packages found matching '{query}'."
+    lines = [f"{k}  v{v.get('version','?')}  {v.get('description','')}" for k, v in results.items()]
+    return "\n".join(lines)
+
+
 FUNCTIONS: dict = {
-    "install":   (_install,   ["url"]),
+    "install":   (_install,   ["name_or_url"]),
     "uninstall": (_uninstall, ["name"]),
     "list":      (_list,      []),
     "info":      (_info,      ["name"]),
     "installed": (_installed, ["name"]),
+    "search":    (_search,    ["query"]),
 }
 
 NEEDS_INTERP: set = set()
