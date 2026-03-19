@@ -20,13 +20,23 @@ python -m pip install -e .
 ## Run a Program
 
 ```bash
-python -m verba examples/full_example.vrb
+verba examples/full_example.vrb
+```
+
+**Check syntax only (parse-only):**
+```bash
+verba --check examples/test.vrb
+```
+
+**Print version:**
+```bash
+verba --version
 ```
 
 ## Start the REPL
 
 ```bash
-python -m verba --repl
+verba --repl
 ```
 
 Type `end.` on its own line to exit.
@@ -95,22 +105,28 @@ x = 10 + 2 * 3.
 r = 10 % 3.
 ```
 
-Operators: `+`, `-`, `*`, `/`, `%`
+Operators: `+`, `-`, `*`, `/`, `%`, `**` (power), `//` (floor divide)
 
 Unary minus is supported: `neg = -5.`
 
 ---
 
-### String Concatenation
-
-Use `join` to combine values into a single string:
+Use `join` or **string interpolation** to combine values into a single string:
 
 ```vb
+name = "Alice".
+age = 30.
+
+/- Option 1: join expression
 greeting = join "Hello, ", name, "!".
+
+/- Option 2: Interpolation (cleaner)
+greeting = "Hello, {name}! You are {age} years old.".
+
 say greeting.
 ```
 
-`join` works anywhere an expression is expected — assignments, `respond with`, function arguments.
+`join` works anywhere an expression is expected — assignments, `respond with`, function arguments. Interpolation works inside any double-quoted string. Use `{{` and `}}` to escape literal braces.
 
 ---
 
@@ -196,6 +212,18 @@ end.
 for item at i in colors:
     say i, ": ", item.
 end.
+
+**Numeric range loop:**
+```vb
+for i from 1 to 10:
+    say i.
+end.
+
+/- Optional step
+for i from 10 to 0 step -2:
+    say i.
+end.
+```
 ```
 
 **Loop control:**
@@ -219,7 +247,30 @@ remove green from colors.
 first_color = item 1 of colors.
 ```
 
-Length:
+**Check membership:**
+```vb
+if "red" in colors:
+    say "found it.".
+end.
+
+if "yellow" not in colors:
+    say "missing yellow.".
+end.
+```
+
+**Sorting:**
+```vb
+sort colors.
+sort colors descending.
+```
+
+**Slicing:**
+```vb
+first 3 of colors into top_three.
+last 2 of colors into bottom_two.
+```
+
+**Length:**
 ```vb
 n = length of colors.
 ```
@@ -248,6 +299,16 @@ end.
 total = the result of running add_two_numbers with 2, 3.
 ```
 
+**Multi-return & Tuple Unpacking:**
+```vb
+define min_max:
+    give 1, 100.
+end.
+
+low, high = the result of running min_max.
+say low, " to ", high.
+```
+
 **Default parameter values:**
 ```vb
 define greet needing name, greeting = "Hello":
@@ -260,13 +321,22 @@ run greet with "Bob", "Hi".
 
 ---
 
-### Try / Catch
+**Try / Catch / Finally**
 
 ```vb
 try:
     run dangerous_function.
 on error saving to error_message:
     say "An error occurred: ", error_message.
+finally:
+    say "cleanup always runs.".
+end.
+```
+
+**Raising errors:**
+```vb
+if age < 0:
+    raise "Age cannot be negative.".
 end.
 ```
 
@@ -325,19 +395,28 @@ end.
 ### 1. Object-Oriented Programming
 
 ```vb
-class Person:
+class Animal:
+    define speak:
+        say "...".
+    end.
+end.
+
+class Person extends Animal:
+    /- Class-level property with default value
+    location = "Earth".
+    
     define init needing first_name:
         self.name = first_name.
     end.
-    define walk:
-        say self.name, " is walking.".
+    define speak:
+        say self.name, " from ", self.location, " says hello.".
     end.
 end.
 
 p = new Person with "Alice".
-run p.walk.
+run p.speak.
 p.name = "Bob".
-run p.walk.
+run p.speak.
 ```
 
 ---
@@ -618,6 +697,62 @@ run express.listen with "5000".
 | `express.json_key with json, key` | Extract a key from a JSON string |
 | `express.json_arr_len with json` | Length of a JSON array |
 | `express.json_arr_item with json, i` | Item at index `i` of a JSON array |
+
+---
+
+
+---
+
+### `json` — JSON Parser & Generator
+
+| Function | Description |
+|---|---|
+| `json.parse with s` | Parse JSON string into a dict/list |
+| `json.get with obj, key` | Get key from object or JSON string |
+| `json.set with json, key, val` | Return new JSON with key set |
+| `json.build with k1, v1, ...` | Build object from key-value pairs |
+| `json.stringify with val` | Convert value to JSON string |
+| `json.arr_len with json` | Length of a JSON array |
+| `json.arr_item with json, i` | Item at index `i` of array |
+
+---
+
+### `os` — Filesystem Operations
+
+| Function | Description |
+|---|---|
+| `os.exists with path` | Check if file/dir exists |
+| `os.is_file with path` | Check if path is a file |
+| `os.is_dir with path` | Check if path is a directory |
+| `os.list with path` | List directory contents |
+| `os.mkdir with path` | Create directory (recursive) |
+| `os.remove with path` | Delete file or directory |
+| `os.rename with src, dst` | Rename/move file or directory |
+| `os.cwd` | Get current working directory |
+| `os.size with path` | Get file size in bytes |
+
+---
+
+### `time` — Date & Time
+
+| Function | Description |
+|---|---|
+| `time.now` | Current Unix timestamp |
+| `time.format with ts, fmt` | Format timestamp (default: `now`, `Y-M-D H:M:S`) |
+| `time.sleep with ms` | Pause execution in milliseconds |
+| `time.since with ts` | Seconds elapsed since timestamp |
+| `time.year`, `time.month`, ... | Current time components |
+
+---
+
+### `env` — Environment Variables
+
+| Function | Description |
+|---|---|
+| `env.get with key, default` | Get an environment variable |
+| `env.set with key, val` | Set an environment variable |
+| `env.has with key` | Check if variable exists |
+| `env.all` | List all environment variables |
 
 ---
 
@@ -929,7 +1064,7 @@ serve on port 5000.
 
 Run with:
 ```bash
-python -m verba examples/http_server.vrb
+verba examples/http_server.vrb
 ```
 
 ---
@@ -973,7 +1108,7 @@ say "browser closed.".
 
 Run with:
 ```bash
-python -m verba examples/use_browser.vrb
+verba examples/use_browser.vrb
 ```
 
 ---
@@ -1017,16 +1152,14 @@ run express.listen with "5000".
 A complete web application written entirely in Verba — no Python glue code needed.
 
 ```bash
-python -m verba examples/webapp/server.vrb
+verba examples/webapp/server.vrb
 ```
 
 Then open `http://localhost:5000`. Features a calculator and a persistent counter, all served from Verba route handlers.
 
 ---
 
-## Notes
-
 - Every root-level statement must end with `.` or `:`.
 - Use single-quoted strings `'...'` when your value contains double quotes (e.g. JSON literals).
-- When Verba cannot understand a line, it throws a plain-English error pointing at the exact line and column.
+- When Verba cannot understand a line, it throws a plain-English error with a **"Did you mean?" suggestion** for similarly named variables or misspelled keywords.
 - Stop any running server with `Ctrl+C`.
