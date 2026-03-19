@@ -2,9 +2,6 @@ verba/__pycache__/
 verba/stdlib/__pycache__/
 out.txt
 run_examples.txt
-build.bat
-verba_main.py
-verba.spec
 
 # webapp runtime data
 examples/webapp/todos.txt
