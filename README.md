@@ -41,7 +41,7 @@ verba --repl
 
 Type `end.` on its own line to exit.
 
-## Formatter & Package Manager
+## Formatter
 
 **Format a script:**
 ```bash
@@ -49,11 +49,99 @@ verba format examples/test.vrb
 ```
 Enforces standard style and 4-space indentation across your code.
 
-**Install an external module:**
+---
+
+## Verbix — Package Manager
+
+Verbix is the official package manager for Verba. It runs **standalone** (no `verba` prefix needed) and manages `.vrb` packages in the local `modules/` folder.
+
+### Running Verbix
+
+**Standalone command** (after adding to PATH):
 ```bash
-verba install https://raw.githubusercontent.com/.../my_module.vrb
+verbix install https://raw.githubusercontent.com/.../my_module.vrb
 ```
-Downloads external `.vrb` packages into a local `modules/` folder dynamically readable by `import`.
+
+**Via Python module:**
+```bash
+python -m verbix install https://raw.githubusercontent.com/.../my_module.vrb
+```
+
+**Via verba subcommand:**
+```bash
+verba verbix install https://raw.githubusercontent.com/.../my_module.vrb
+```
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `verbix install <url>` | Download and install a `.vrb` package from a URL |
+| `verbix uninstall <name>` | Remove an installed package |
+| `verbix packages` | List all installed packages |
+| `verbix info <name>` | Show details about an installed package |
+| `verbix --version` | Print Verbix version |
+
+### Example
+
+```bash
+# 1. Install a package from a URL
+verbix install http://localhost:8900/mathkit.vrb
+
+# 2. List installed packages
+verbix packages
+
+# 3. Show package info
+verbix info mathkit
+
+# 4. Uninstall a package
+verbix uninstall mathkit
+```
+
+Installed packages land in `modules/` and are tracked in `modules/.registry.json`. Use them in any script:
+
+```vb
+import from file called "modules/mathkit.vrb".
+
+result = the result of running add with 10, 5.
+say "10 + 5 = ", result.
+```
+
+### Using Verbix inside a Verba script
+
+Verbix is also available as a built-in module (`verbix`) inside every Verba program:
+
+```vb
+/- Install a package at runtime
+msg = the result of running verbix.install with "http://localhost:8900/mathkit.vrb".
+say msg.
+
+/- Check if a package is installed
+ok = the result of running verbix.installed with "mathkit".
+say "mathkit installed: ", ok.
+
+/- List all packages
+list = the result of running verbix.list.
+say list.
+
+/- Get info about a package
+info = the result of running verbix.info with "mathkit".
+say info.
+
+/- Uninstall a package
+result = the result of running verbix.uninstall with "mathkit".
+say result.
+```
+
+### Building verbix.exe
+
+To build a standalone `verbix.exe` binary:
+
+```bash
+pyinstaller verbix.spec
+```
+
+The binary will be at `dist/verbix.exe`. Add it to your PATH to use `verbix` from anywhere.
 
 ---
 
@@ -537,7 +625,7 @@ Stop the server with `Ctrl+C`.
 
 ## Standard Library Modules
 
-Five modules are available in every Verba program without any import — `http`, `browser`, `express`, `strings`, and `math`.
+These modules are available in every Verba program without any import — `http`, `browser`, `express`, `strings`, `math`, `json`, `os`, `time`, `env`, `random`, `base64`, `regex`, `datetime`, `db`, `crypto`, `csv`, `xml`, `gui`, and `verbix`.
 
 ---
 
@@ -1175,6 +1263,71 @@ verba examples/webapp/server.vrb
 ```
 
 Then open `http://localhost:5000`. Features a calculator and a persistent counter, all served from Verba route handlers.
+
+---
+
+### 17. mathkit.vrb — Verbix Package Example
+
+A reusable math utilities package hosted in `verba_packages/` and installable via Verbix.
+
+```bash
+# Serve the package folder locally
+python -m http.server 8900   # run from verba_packages/
+
+# Install it
+verbix install http://localhost:8900/mathkit.vrb
+```
+
+```vb
+note mathkit.vrb — math utilities package
+
+define add needing a, b:
+    give a + b.
+end.
+
+define divide needing a, b:
+    if b == 0:
+        raise "Cannot divide by zero.".
+    end.
+    give a / b.
+end.
+
+define average needing numbers:
+    total = 0.
+    count = 0.
+    for n in numbers:
+        total += n.
+        count += 1.
+    end.
+    give total / count.
+end.
+```
+
+---
+
+### 18. use_mathkit.vrb — Using a Verbix-installed Package
+
+```vb
+import from file called "modules/mathkit.vrb".
+
+sum = the result of running add with 12, 4.
+say "12 + 4 = ", sum.
+
+scores = a list of 80, 95, 70, 88, 92.
+avg = the result of running average with scores.
+say "average = ", avg.
+
+try:
+    bad = the result of running divide with 10, 0.
+on error saving to err:
+    say "caught: ", err.
+end.
+```
+
+Run with:
+```bash
+verba examples/use_mathkit.vrb
+```
 
 ---
 
