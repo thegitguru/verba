@@ -230,9 +230,18 @@ class Define(Stmt):
 
 
 @dataclass(frozen=True)
-class GiveBack(Stmt):
+class MultiAssign(Stmt):
+    """low, high = the result of running func with args  — destructures a list return value."""
     span: Span
-    value: Expr
+    names: list[str]
+    value: "Expr"
+
+
+@dataclass(frozen=True)
+class GiveBack(Stmt):
+    """give <expr> [, <expr>, ...]  — returns one value or a list for multi-return."""
+    span: Span
+    values: list["Expr"]
 
 
 @dataclass(frozen=True)
@@ -306,6 +315,7 @@ class ClassDef(Stmt):
     name: str
     methods: dict[str, Define]
     parent_name: Optional[str] = None
+    fields: dict = None  # class-level default field values: {name: Expr}
 
 @dataclass(frozen=True)
 class ObjectNew(Expr):

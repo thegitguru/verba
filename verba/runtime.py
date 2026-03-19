@@ -40,6 +40,11 @@ class ClassObj:
     name: str
     methods: dict[str, ast.Define]
     parent: Optional["ClassObj"] = None
+    field_defaults: dict = None  # {field_name: evaluated_default_value}
+
+    def __post_init__(self):
+        if self.field_defaults is None:
+            self.field_defaults = {}
 
 
 class Instance:
@@ -460,11 +465,39 @@ class Interpreter:
             return
 
         if isinstance(s, ast.GiveBack):
-            value = self._eval_expr(s.value, env=env, context="general")
+            if len(s.values) == 1:
+                value = self._eval_expr(s.values[0], env=env, context="general")
+            else:
+                value = [self._eval_expr(v, env=env, context="general") for v in s.values]
             raise _ReturnSignal(value)
 
         if isinstance(s, ast.Run):
             self._call(s.name, s.args, caller_env=env, line_no=ln)
+            return
+
+        if isinstance(s, ast.MultiAssign):
+            # Evaluate RHS
+            rhs = s.value
+            # rhs is either a Literal wrapping a LetResultOfRun/LetResultOfMethod AST node
+            # or a plain Expr (list)
+            from .ast import Literal as _Lit, LetResultOfRun as _LROR, LetResultOfMethod as _LROM
+            if isinstance(rhs, _Lit) and isinstance(rhs.value, (_LROR, _LROM)):
+                inner = rhs.value
+                if isinstance(inner, _LROR):
+                    result = self._call(inner.func_name, inner.args, caller_env=env, line_no=ln)
+                else:
+                    obj = env.get(inner.obj_name) if env.contains(inner.obj_name) else None
+                    if isinstance(obj, NativeInstance):
+                        result = self._call_native_method(obj, inner.method, inner.args, caller_env=env, line_no=ln)
+                    else:
+                        result = self._call_method(obj, inner.method, inner.args, caller_env=env, line_no=ln)
+            else:
+                result = self._eval_expr(rhs, env=env, context="general")
+            # Unpack
+            if not isinstance(result, list):
+                result = [result]
+            for i, name in enumerate(s.names):
+                env.set(name, result[i] if i < len(result) else None)
             return
 
         if isinstance(s, ast.LetResultOfRun):
@@ -574,7 +607,16 @@ class Interpreter:
             # Inherit parent methods, child overrides take precedence
             merged = dict(parent.methods) if parent else {}
             merged.update(s.methods)
-            self.classes[s.name] = ClassObj(s.name, merged, parent)
+            # Merge fields: parent fields first, then child fields override
+            merged_fields = dict(parent.field_defaults or {}) if parent else {}
+            merged_fields.update(s.fields or {})
+            cls_obj = ClassObj(s.name, merged, parent)
+            # Evaluate field default expressions and store values
+            cls_obj.field_defaults = {
+                k: self._eval_expr(v, env=env, context="general")
+                for k, v in merged_fields.items()
+            }
+            self.classes[s.name] = cls_obj
             return
 
         if isinstance(s, ast.ObjectPropSet):
@@ -776,6 +818,11 @@ class Interpreter:
                 raise VerbaRuntimeError(f"Class {e.class_name} has not been defined.", line_no=ln)
             cls = self.classes[e.class_name]
             inst = Instance(cls)
+            # Initialize class-level field defaults (already evaluated, so copy them)
+            import copy
+            for fname, fval in cls.field_defaults.items():
+                # Deep-copy mutable defaults (lists, dicts) so instances don't share them
+                inst.props[fname] = copy.deepcopy(fval)
             if "init" in cls.methods:
                 self._call_method(inst, "init", e.args, caller_env=env, line_no=ln)
             elif e.args:
@@ -811,7 +858,20 @@ class Interpreter:
             if context == "say":
                 # In output, undefined names are treated as literal words (so "say hello." works).
                 return e.name
-            raise VerbaRuntimeError(f"The variable called {e.name} has not been defined yet.", line_no=ln, col=col, line=raw)
+            # "Did you mean?" suggestion for undefined variables
+            import difflib
+            known = list(env.values.keys())
+            if env.parent:
+                curr = env.parent
+                while curr:
+                    known.extend(curr.values.keys())
+                    curr = curr.parent
+            matches = difflib.get_close_matches(e.name, known, n=1, cutoff=0.7)
+            hint = f"Did you mean '{matches[0]}'?" if matches else None
+            raise VerbaRuntimeError(
+                f"The variable called {e.name} has not been defined yet.",
+                line_no=ln, col=col, line=raw, hint=hint
+            )
 
         if isinstance(e, ast.BinaryOp):
             left = self._eval_expr(e.left, env=env, context=context)

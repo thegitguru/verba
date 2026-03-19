@@ -34,6 +34,7 @@ from .ast import (
     ListSlice,
     MapLiteral,
     LoadFile,
+    MultiAssign,
     Note,
     Repeat,
     Run,
@@ -544,17 +545,62 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             break
     
     if by_i != -1 and not is_keyword_stmt:
-        name = _join_name(tokens[:by_i], line_no=line_no)
+        raw_name = " ".join(t.value for t in tokens[:by_i])
+        op = tokens_lc[by_i]
         value = parse_expr(tokens[by_i + 1 :], line_no=line_no)
         cur.i += 1
-        op = tokens_lc[by_i]
-        if op == "+=": return Increase(span, name, value)
-        if op == "-=": return Decrease(span, name, value)
-        if op == "*=": return SetVar(span, name, BinaryOp(span, "*", VarRef(span, name), value))
-        if op == "/=": return SetVar(span, name, BinaryOp(span, "/", VarRef(span, name), value))
+        if "." in raw_name:
+            # obj.prop += val  =>  ObjectPropSet(obj, prop, current op val)
+            dot_i = raw_name.index(".")
+            obj_n = raw_name[:dot_i].lower()
+            prop_n = raw_name[dot_i + 1:].lower()
+            current = ObjectPropGet(span, obj_n, prop_n)
+            if op == "+=": return ObjectPropSet(span, obj_n, prop_n, BinaryOp(span, "+", current, value))
+            if op == "-=": return ObjectPropSet(span, obj_n, prop_n, BinaryOp(span, "-", current, value))
+            if op == "*=": return ObjectPropSet(span, obj_n, prop_n, BinaryOp(span, "*", current, value))
+            if op == "/=": return ObjectPropSet(span, obj_n, prop_n, BinaryOp(span, "/", current, value))
+        else:
+            name = _join_name(tokens[:by_i], line_no=line_no)
+            if op == "+=": return Increase(span, name, value)
+            if op == "-=": return Decrease(span, name, value)
+            if op == "*=": return SetVar(span, name, BinaryOp(span, "*", VarRef(span, name), value))
+            if op == "/=": return SetVar(span, name, BinaryOp(span, "/", VarRef(span, name), value))
 
-    # Check for concise definition: x = 5.
+    # Check for concise definition: x = 5.  OR  a, b = ...
+    # First detect a multi-assign: comma-separated names left of '='
     eq_i = tokens_lc.index("=") if "=" in tokens_lc else -1
+    
+    # Detect multi-assign: "a , b = ..."
+    if eq_i > 1 and not is_keyword_stmt:
+        lhs_tokens = tokens[:eq_i]
+        lhs_lc = tokens_lc[:eq_i]
+        # Check if lhs is a comma-separated list of names (no keywords)
+        if "," in lhs_lc:
+            name_groups = _split_by_commas(lhs_tokens)
+            if all(len(g) == 1 for g in name_groups):
+                names = [g[0].value.lower() for g in name_groups]
+                rhs_tokens = tokens[eq_i + 1:]
+                rhs_lc = tokens_lc[eq_i + 1:]
+                # Support: names = the result of running func with args
+                if len(rhs_lc) >= 4 and rhs_lc[:4] == ["the", "result", "of", "running"]:
+                    if "with" in rhs_lc:
+                        with_i = rhs_lc.index("with")
+                        fn = _join_name(rhs_tokens[4:with_i], line_no=line_no)
+                        args = [parse_expr(a, line_no=line_no) for a in _split_by_commas(rhs_tokens[with_i + 1:])]
+                    else:
+                        fn = _join_name(rhs_tokens[4:], line_no=line_no)
+                        args = []
+                    cur.i += 1
+                    if "." in fn:
+                        parts = fn.split(".")
+                        call_expr = LetResultOfMethod(span, "__multi__", parts[0], parts[1], args)
+                        # Wrap as MultiAssign — runtime will unpack
+                        return MultiAssign(span, names, Literal(span, call_expr))
+                    return MultiAssign(span, names, Literal(span, LetResultOfRun(span, "__multi__", fn, args)))
+                # Fallback: rhs is a plain expr (list)
+                rhs_expr = parse_expr(rhs_tokens, line_no=line_no)
+                cur.i += 1
+                return MultiAssign(span, names, rhs_expr)
         
     if eq_i != -1 and eq_i + 1 < len(tokens_lc) and tokens_lc[eq_i+1] != "=" and not is_keyword_stmt:
         name = _join_name(tokens[:eq_i], line_no=line_no)
@@ -953,14 +999,18 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         body = _parse_block(cur, expected_indent=expected_indent + 4)
         methods = {}
+        fields: dict = {}
         for s in body:
             if isinstance(s, (Define, AsyncDefine)):
                 methods[s.name] = s
             elif isinstance(s, Note):
                 pass
+            elif isinstance(s, Let):
+                # Class-level field: count = 0.
+                fields[s.name] = s.value
             else:
-                raise VerbaParseError("Only 'define' methods and notes are allowed at the root of a 'class'.", line_no=line_no)
-        
+                raise VerbaParseError("Only 'define' methods, field assignments, and notes are allowed at the root of a 'class'.", line_no=line_no)
+
         if cur.i >= len(cur.lines):
             raise VerbaParseError("I expected 'end.'", line_no=line_no)
         end_line = cur.lines[cur.i]
@@ -969,7 +1019,7 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             raise VerbaParseError("I expected 'end.'", line_no=end_no, col=end_line.indent, line=end_line.raw)
         _require_period(end_line, end_no)
         cur.i += 1
-        return ClassDef(span, name, methods, parent_name)
+        return ClassDef(span, name, methods, parent_name, fields)
 
     # define function ...
     if first_val in ["define", "async"]:
@@ -1093,9 +1143,14 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
 
     # give
     if first_val == "give":
-        value = parse_expr(tokens[1:], line_no=line_no)
+        # Support multi-value: give 1, 100.
+        parts = _split_by_commas(tokens[1:])
+        if len(parts) == 1:
+            values = [parse_expr(parts[0], line_no=line_no)]
+        else:
+            values = [parse_expr(p, line_no=line_no) for p in parts if p]
         cur.i += 1
-        return GiveBack(span, value)
+        return GiveBack(span, values)
 
     # run function ...
     if first_val == "run":
@@ -1238,11 +1293,27 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         return TryBlock(span, try_body, catch_body, error_name, finally_body)
 
+    _KNOWN_KEYWORDS = [
+        "say", "display", "ask", "if", "for", "while", "repeat", "define",
+        "async", "run", "give", "return", "sort", "first", "last", "add",
+        "remove", "save", "load", "import", "class", "free", "delete",
+        "fetch", "append", "note", "try", "match", "raise", "stop", "skip",
+        "assert", "serve", "on", "respond", "redirect", "await", "deref",
+    ]
+
+    def _suggest(word: str, candidates: list[str], threshold: float = 0.6) -> str | None:
+        import difflib
+        matches = difflib.get_close_matches(word, candidates, n=1, cutoff=threshold)
+        return matches[0] if matches else None
+
+    suggestion = _suggest(first_val, _KNOWN_KEYWORDS)
+    hint = f"Did you mean '{suggestion}'?" if suggestion else None
     raise VerbaParseError(
         f"I did not understand this line. Did you mean to use say, let, set, if, repeat, keep, define, run, or ask?",
         line_no=line_no,
         col=tokens[0].col,
         line=lt.raw,
+        hint=hint,
     )
 
 
