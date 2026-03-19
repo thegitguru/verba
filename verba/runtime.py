@@ -28,6 +28,11 @@ class Function:
     name: str
     params: list[str]
     body: list[ast.Stmt]
+    defaults: dict = None
+
+    def __post_init__(self):
+        if self.defaults is None:
+            self.defaults = {}
 
 
 @dataclass
@@ -66,6 +71,14 @@ class NativeInstance:
 class _ReturnSignal(Exception):
     def __init__(self, value: Any):
         self.value = value
+
+
+class _BreakSignal(Exception):
+    pass
+
+
+class _ContinueSignal(Exception):
+    pass
 
 
 class _RespondSignal(Exception):
@@ -151,7 +164,9 @@ class Interpreter:
         from verba.stdlib import http as _http_mod
         from verba.stdlib import browser as _browser_mod
         from verba.stdlib import express as _express_mod
-        for mod_name, mod in [("http", _http_mod), ("browser", _browser_mod), ("express", _express_mod)]:
+        from verba.stdlib import strings as _strings_mod
+        from verba.stdlib import math as _math_mod
+        for mod_name, mod in [("http", _http_mod), ("browser", _browser_mod), ("express", _express_mod), ("strings", _strings_mod), ("math", _math_mod)]:
             needs_interp: set = getattr(mod, "NEEDS_INTERP", set())
             methods = {}
             for fn_name, (fn, params) in mod.FUNCTIONS.items():
@@ -183,6 +198,30 @@ class Interpreter:
             return
 
         if isinstance(s, ast.Note):
+            return
+
+        if isinstance(s, ast.Break):
+            raise _BreakSignal()
+
+        if isinstance(s, ast.Continue):
+            raise _ContinueSignal()
+
+        if isinstance(s, ast.Assert):
+            ok = self._eval_bool(s.condition, env=env)
+            if not ok:
+                msg = s.message if s.message else "Assertion failed."
+                raise VerbaRuntimeError(msg, line_no=ln, col=col, line=raw)
+            return
+
+        if isinstance(s, ast.Match):
+            subject = self._eval_expr(s.subject, env=env, context="general")
+            for branch in s.branches:
+                val = self._eval_expr(branch.value, env=env, context="general")
+                if subject == val:
+                    self._exec_block(branch.body, env=env)
+                    return
+            if s.else_body is not None:
+                self._exec_block(s.else_body, env=env)
             return
 
         if isinstance(s, ast.Let):
@@ -258,14 +297,27 @@ class Interpreter:
 
         if isinstance(s, ast.Repeat):
             n = int(self._to_number(self._eval_expr(s.times, env=env, context="general"), ln))
-            for _ in range(n):
-                self._exec_block(s.body, env=env)
+            for i in range(n):
+                loop_env = Environment(parent=env)
+                if s.index_name:
+                    loop_env.set(s.index_name, i + 1)
+                try:
+                    self._exec_block(s.body, env=loop_env)
+                except _ContinueSignal:
+                    continue
+                except _BreakSignal:
+                    break
             return
 
         if isinstance(s, ast.While):
             guard = 0
             while self._eval_bool(s.condition, env=env):
-                self._exec_block(s.body, env=env)
+                try:
+                    self._exec_block(s.body, env=env)
+                except _ContinueSignal:
+                    pass
+                except _BreakSignal:
+                    break
                 guard += 1
                 if guard > 10_000_000:
                     raise VerbaRuntimeError("This loop ran for too long. Did you forget to update the condition?", line_no=ln, col=col, line=raw)
@@ -280,7 +332,30 @@ class Interpreter:
             for item in lst:
                 inner = Environment(parent=env)
                 inner.set(s.item_name, item)
-                self._exec_block(s.body, env=inner)
+                try:
+                    self._exec_block(s.body, env=inner)
+                except _ContinueSignal:
+                    continue
+                except _BreakSignal:
+                    break
+            return
+
+        if isinstance(s, ast.ForEachIndexed):
+            if not env.contains(s.list_name):
+                raise VerbaRuntimeError(f"The list called {s.list_name} has not been defined yet.", line_no=ln, col=col, line=raw)
+            lst = env.get(s.list_name)
+            if not isinstance(lst, list):
+                raise VerbaRuntimeError(f"The variable called {s.list_name} is not a list.", line_no=ln, col=col, line=raw)
+            for idx, item in enumerate(lst, start=1):
+                inner = Environment(parent=env)
+                inner.set(s.item_name, item)
+                inner.set(s.index_name, idx)
+                try:
+                    self._exec_block(s.body, env=inner)
+                except _ContinueSignal:
+                    continue
+                except _BreakSignal:
+                    break
             return
 
         if isinstance(s, ast.ListAdd):
@@ -320,7 +395,9 @@ class Interpreter:
             return
 
         if isinstance(s, ast.Define):
-            self.functions[s.name] = Function(s.name, s.params, s.body)
+            fn = Function(s.name, s.params, s.body)
+            fn.defaults = {k: self._eval_expr(v, env=env, context="general") for k, v in (s.defaults or {}).items()}
+            self.functions[s.name] = fn
             return
 
         if isinstance(s, ast.GiveBack):
@@ -432,6 +509,10 @@ class Interpreter:
 
         if isinstance(s, ast.ObjectPropSet):
             obj = env.get(s.obj_name)
+            if isinstance(obj, dict):
+                val = self._eval_expr(s.value, env=env, context="general")
+                obj[s.prop] = val
+                return
             if not isinstance(obj, Instance):
                 raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln, col=col, line=raw)
             val = self._eval_expr(s.value, env=env, context="general")
@@ -601,6 +682,14 @@ class Interpreter:
         if isinstance(e, ast.StringConcat):
             return "".join(self._to_word(self._eval_expr(p, env=env, context="say")) for p in e.parts)
 
+        if isinstance(e, ast.ListLength):
+            if not env.contains(e.list_name):
+                raise VerbaRuntimeError(f"The variable called {e.list_name} has not been defined yet.", line_no=ln)
+            lst = env.get(e.list_name)
+            if not isinstance(lst, list):
+                raise VerbaRuntimeError(f"The variable called {e.list_name} is not a list.", line_no=ln)
+            return len(lst)
+
         if isinstance(e, ast.Ref):
             if not env.contains(e.name):
                 raise VerbaRuntimeError(f"The variable called {e.name} has not been defined yet.", line_no=ln, col=col, line=raw)
@@ -623,18 +712,25 @@ class Interpreter:
                 raise VerbaRuntimeError(f"Class {e.class_name} does not have an init method but arguments were passed.", line_no=ln)
             return inst
 
+        if isinstance(e, ast.MapLiteral):
+            return {k: self._eval_expr(v, env=env, context="general") for k, v in e.pairs}
+
         if isinstance(e, ast.ObjectPropGet):
             if e.obj_name == "self":
                 obj = env.get("self")
             else:
                 obj = env.get(e.obj_name) if env.contains(e.obj_name) else None
-            if isinstance(obj, NativeInstance):
-                return obj.props.get(e.prop)
-            if not isinstance(obj, (Instance, _VerbaRequest)):
-                raise VerbaRuntimeError(f"Variable {e.obj_name} is not an object.", line_no=ln)
-            if e.prop in obj.props:
-                return obj.props[e.prop]
-            return None
+            # Walk chained props: e.prop may be "address.city"
+            for prop_part in e.prop.split("."):
+                if isinstance(obj, NativeInstance):
+                    obj = obj.props.get(prop_part)
+                elif isinstance(obj, dict):
+                    obj = obj.get(prop_part)
+                elif isinstance(obj, (Instance, _VerbaRequest)):
+                    obj = obj.props.get(prop_part)
+                else:
+                    raise VerbaRuntimeError(f"Cannot access property '{prop_part}' on a non-object.", line_no=ln)
+            return obj
 
         if isinstance(e, ast.Literal):
             return e.value
@@ -710,14 +806,25 @@ class Interpreter:
         if name not in self.functions:
             raise VerbaRuntimeError(f"I cannot run the function called {name} because it has not been defined.", line_no=line_no)
         fn = self.functions[name]
-        if len(args) != len(fn.params):
+        # Fill in defaults for missing trailing args
+        evaled_args = [self._eval_expr(a, env=caller_env, context="general") for a in args]
+        if len(evaled_args) < len(fn.params):
+            for p in fn.params[len(evaled_args):]:
+                if p in fn.defaults:
+                    evaled_args.append(fn.defaults[p])
+                else:
+                    raise VerbaRuntimeError(
+                        f"The function called {name} needs {len(fn.params)} value(s), but you gave {len(args)}.",
+                        line_no=line_no,
+                    )
+        if len(evaled_args) != len(fn.params):
             raise VerbaRuntimeError(
                 f"The function called {name} needs {len(fn.params)} value(s), but you gave {len(args)}.",
                 line_no=line_no,
             )
         call_env = Environment(parent=self.globals)
-        for p, a in zip(fn.params, args, strict=True):
-            call_env.set(p, self._eval_expr(a, env=caller_env, context="general"))
+        for p, v in zip(fn.params, evaled_args):
+            call_env.set(p, v)
         try:
             self._exec_block(fn.body, env=call_env)
         except _ReturnSignal as r:

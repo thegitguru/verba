@@ -133,6 +133,7 @@ class Repeat(Stmt):
     span: Span
     times: Expr
     body: list[Stmt]
+    index_name: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -146,6 +147,15 @@ class While(Stmt):
 class ForEach(Stmt):
     span: Span
     item_name: str
+    list_name: str
+    body: list[Stmt]
+
+
+@dataclass(frozen=True)
+class ForEachIndexed(Stmt):
+    span: Span
+    item_name: str
+    index_name: str
     list_name: str
     body: list[Stmt]
 
@@ -173,11 +183,21 @@ class ListItemGet(Stmt):
 
 
 @dataclass(frozen=True)
+class ListLength(Expr):
+    span: Span
+    list_name: str
+
+
+@dataclass(frozen=True)
 class Define(Stmt):
     span: Span
     name: str
     params: list[str]
     body: list[Stmt]
+    defaults: dict = None
+
+    def __hash__(self):
+        return hash((self.span, self.name, tuple(self.params)))
 
 
 @dataclass(frozen=True)
@@ -375,4 +395,41 @@ class DerefSet(Stmt):
     span: Span
     name: str
     value: Expr
+
+
+@dataclass(frozen=True)
+class Break(Stmt):
+    span: Span
+
+
+@dataclass(frozen=True)
+class Continue(Stmt):
+    span: Span
+
+
+@dataclass(frozen=True)
+class MapLiteral(Expr):
+    span: Span
+    pairs: list[tuple[str, "Expr"]]
+
+
+@dataclass(frozen=True)
+class Assert(Stmt):
+    span: Span
+    condition: "BoolExpr"
+    message: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class MatchBranch:
+    value: "Expr"
+    body: list["Stmt"]
+
+
+@dataclass(frozen=True)
+class Match(Stmt):
+    span: Span
+    subject: "Expr"
+    branches: list[MatchBranch]
+    else_body: Optional[list["Stmt"]] = None
 

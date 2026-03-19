@@ -6,6 +6,11 @@ build.bat
 verba_main.py
 verba.spec
 
+# webapp runtime data
+examples/webapp/todos.txt
+examples/webapp/notes.txt
+examples/webapp/counter.txt
+
 # PyInstaller build artifacts
 build/
 dist/

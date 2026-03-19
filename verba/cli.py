@@ -25,6 +25,10 @@ def run_file(path: Path) -> int:
 
 def repl() -> int:
     print("Verba REPL. Type 'end.' on its own line to exit.")
+    try:
+        import readline  # noqa: F401 — enables arrow-key history on Unix/Windows
+    except ImportError:
+        pass
     interp = Interpreter()
     buf: list[str] = []
     while True:

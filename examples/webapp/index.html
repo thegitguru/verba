@@ -7,185 +7,603 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg:       #0d0f18;
+      --surface:  #13161f;
+      --card:     #1a1d2e;
+      --border:   #252840;
+      --accent:   #7c3aed;
+      --accent2:  #06b6d4;
+      --accent3:  #10b981;
+      --accent4:  #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --danger:   #ef4444;
+      --success:  #86efac;
+      --error:    #f87171;
+      --radius:   12px;
+    }
+
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
-      padding: 40px 20px;
+      padding: 32px 20px 60px;
     }
 
-    h1 { color: #a78bfa; font-size: 1.6rem; margin-bottom: 6px; }
-    .subtitle { color: #475569; font-size: 0.85rem; margin-bottom: 40px; }
-    .subtitle code { color: #7c3aed; background: #1e2130; padding: 1px 6px; border-radius: 4px; }
+    /* ── header ── */
+    header {
+      max-width: 1100px;
+      margin: 0 auto 36px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo {
+      width: 40px; height: 40px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-size: 1.3rem; font-weight: 900; color: #fff;
+    }
+    header h1 { font-size: 1.5rem; color: #c4b5fd; }
+    header p  { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+    .pill {
+      margin-left: auto;
+      background: #7c3aed22;
+      color: #a78bfa;
+      border: 1px solid #7c3aed44;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      padding: 4px 12px;
+    }
 
+    /* ── grid ── */
     .grid {
+      max-width: 1100px;
+      margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-      max-width: 900px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
     }
 
+    /* ── card ── */
     .card {
-      background: #1a1d27;
-      border: 1px solid #2d3148;
-      border-radius: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: grid; place-items: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .icon-purple { background: #7c3aed22; }
+    .icon-cyan   { background: #06b6d422; }
+    .icon-green  { background: #10b98122; }
+    .icon-amber  { background: #f59e0b22; }
+
+    .card-title { font-size: 0.95rem; font-weight: 600; color: #c4b5fd; }
+    .card-badge {
+      margin-left: auto;
+      background: #1e2130;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.68rem;
+      padding: 2px 7px;
     }
 
-    .card h2 { font-size: 1rem; color: #c4b5fd; margin-bottom: 16px; }
+    /* ── form elements ── */
+    label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; }
 
-    label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
-
-    input, select {
+    input[type=text], input[type=number], textarea, select {
       width: 100%;
-      background: #0f1117;
-      color: #e2e8f0;
-      border: 1px solid #3b4168;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 0.9rem;
-      margin-bottom: 12px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
     }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 72px; }
 
     .row { display: flex; gap: 8px; }
-    .row input { flex: 1; }
+    .row > * { flex: 1; }
 
-    button {
-      width: 100%;
-      padding: 9px;
+    /* ── buttons ── */
+    .btn {
+      padding: 9px 16px;
       border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:hover  { opacity: .85; }
+    .btn:active { transform: scale(.97); }
+
+    .btn-primary  { background: var(--accent);  color: #fff; width: 100%; }
+    .btn-cyan     { background: var(--accent2); color: #fff; width: 100%; }
+    .btn-green    { background: var(--accent3); color: #fff; width: 100%; }
+    .btn-amber    { background: var(--accent4); color: #fff; }
+    .btn-ghost    { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    .btn-danger   { background: #ef444422; color: var(--danger); border: 1px solid #ef444433; }
+    .btn-sm       { padding: 5px 10px; font-size: 0.78rem; }
+    .btn-full     { width: 100%; }
+
+    /* ── result box ── */
+    .result {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.83rem;
+      color: var(--success);
+      white-space: pre-wrap;
+      min-height: 44px;
+      word-break: break-word;
+    }
+    .result.error { color: var(--error); }
+    .result.muted { color: var(--muted); font-style: italic; }
+
+    /* ── calculator specific ── */
+    .calc-display {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: right;
+    }
+    .calc-expr  { font-size: 0.78rem; color: var(--muted); min-height: 18px; }
+    .calc-value { font-size: 2rem; font-weight: 700; color: var(--text); min-height: 44px; word-break: break-all; }
+
+    .calc-history {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .calc-history .entry { padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .calc-history .entry:last-child { border-bottom: none; }
+    .calc-history .entry span { color: var(--success); float: right; }
+
+    .op-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+    .op-btn {
+      padding: 8px;
+      border: 1px solid var(--border);
       border-radius: 6px;
-      background: #7c3aed;
-      color: #fff;
+      background: var(--surface);
+      color: var(--text);
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity .15s;
-      margin-bottom: 8px;
+      transition: background .15s, border-color .15s;
+      text-align: center;
     }
-    button:hover { opacity: .85; }
-    button.secondary { background: #1e2130; color: #94a3b8; border: 1px solid #3b4168; }
+    .op-btn:hover    { background: #7c3aed22; border-color: var(--accent); }
+    .op-btn.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-    .result {
-      margin-top: 14px;
-      padding: 12px;
-      background: #0b0d14;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 0.88rem;
-      color: #86efac;
-      white-space: pre-wrap;
-      min-height: 40px;
+    /* ── todo specific ── */
+    .todo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
     }
-    .result.error { color: #f87171; }
-
-    .badge {
-      display: inline-block;
-      background: #7c3aed22;
-      color: #a78bfa;
-      border: 1px solid #7c3aed55;
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.85rem;
+      transition: opacity .2s;
+    }
+    .todo-item.done { opacity: .45; }
+    .todo-item.done .todo-text { text-decoration: line-through; color: var(--muted); }
+    .todo-check {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
       border-radius: 4px;
-      font-size: 0.7rem;
-      padding: 1px 7px;
-      margin-left: 8px;
-      vertical-align: middle;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: grid; place-items: center;
+      transition: background .15s, border-color .15s;
     }
+    .todo-check.checked { background: var(--accent3); border-color: var(--accent3); }
+    .todo-check.checked::after { content: '✓'; color: #fff; font-size: 0.7rem; font-weight: 700; }
+    .todo-text { flex: 1; }
+    .todo-del  { color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; border-radius: 4px; }
+    .todo-del:hover { color: var(--danger); background: #ef444422; }
+
+    .todo-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* ── notes specific ── */
+    .notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .note-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.83rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── counter specific ── */
+    .counter-display {
+      text-align: center;
+      padding: 20px 0 10px;
+    }
+    .counter-value {
+      font-size: 4rem;
+      font-weight: 800;
+      color: var(--accent4);
+      line-height: 1;
+      transition: transform .1s;
+    }
+    .counter-value.bump { transform: scale(1.12); }
+    .counter-label { font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+    .counter-btns  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+    /* ── scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   </style>
 </head>
 <body>
 
-<h1>⬡ Verba Web App</h1>
-<p class="subtitle">
-  HTML frontend · <code>server.py</code> HTTP runner ·
-  <strong style="color:#c4b5fd">all logic in <code>.vrb</code> files</strong>
-</p>
+<header>
+  <div class="logo">V</div>
+  <div>
+    <h1>Verba Web App</h1>
+    <p>Pure Verba server · no Python runner · all logic in <code style="color:#a78bfa">server.vrb</code></p>
+  </div>
+  <span class="pill">localhost:5000</span>
+</header>
 
 <div class="grid">
 
-  <!-- Calculator -->
+  <!-- ── CALCULATOR ── -->
   <div class="card">
-    <h2>Calculator <span class="badge">calc.vrb</span></h2>
+    <div class="card-header">
+      <div class="card-icon icon-purple">🧮</div>
+      <span class="card-title">Calculator</span>
+      <span class="card-badge">server.vrb /api/calc</span>
+    </div>
+
+    <div class="calc-display">
+      <div class="calc-expr"  id="calc-expr">&nbsp;</div>
+      <div class="calc-value" id="calc-value">0</div>
+    </div>
+
     <div class="row">
-      <div style="flex:1">
+      <div>
         <label>A</label>
-        <input id="ca" type="number" value="10" />
+        <input type="number" id="ca" value="10" />
       </div>
-      <div style="flex:1">
+      <div>
         <label>B</label>
-        <input id="cb" type="number" value="3" />
+        <input type="number" id="cb" value="3" />
       </div>
     </div>
-    <label>Operator</label>
-    <select id="cop">
-      <option>+</option>
-      <option>-</option>
-      <option>*</option>
-      <option>/</option>
-      <option>%</option>
-    </select>
-    <button onclick="calc()">Calculate</button>
-    <div class="result" id="calc-result">Result will appear here.</div>
+
+    <div>
+      <label>Operator</label>
+      <div class="op-grid">
+        <div class="op-btn selected" onclick="selectOp(this,'+')">+</div>
+        <div class="op-btn"         onclick="selectOp(this,'-')">−</div>
+        <div class="op-btn"         onclick="selectOp(this,'*')">×</div>
+        <div class="op-btn"         onclick="selectOp(this,'/')">÷</div>
+        <div class="op-btn"         onclick="selectOp(this,'%')">%</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="calc()">Calculate</button>
+
+    <div>
+      <label>History</label>
+      <div class="calc-history" id="calc-history"><span style="color:var(--muted);font-style:italic">No calculations yet.</span></div>
+    </div>
   </div>
 
-  <!-- To-Do List -->
+  <!-- ── TODOS ── -->
   <div class="card">
-    <h2>To-Do List <span class="badge">add_todo.vrb · list_todos.vrb</span></h2>
-    <label>New item</label>
-    <input id="todo-input" type="text" placeholder="e.g. Buy groceries" />
-    <button onclick="addTodo()">Add Item</button>
-    <button class="secondary" onclick="loadTodos()">Refresh List</button>
-    <button class="secondary" onclick="clearTodos()">Clear All</button>
-    <div class="result" id="todo-result">Click "Refresh List" to load todos.</div>
+    <div class="card-header">
+      <div class="card-icon icon-cyan">✅</div>
+      <span class="card-title">To-Do List</span>
+      <span class="card-badge">server.vrb /api/todos</span>
+    </div>
+
+    <div>
+      <label>New item</label>
+      <div class="row">
+        <input type="text" id="todo-input" placeholder="e.g. Buy groceries"
+               onkeydown="if(event.key==='Enter') addTodo()" />
+        <button class="btn btn-cyan btn-sm" style="width:auto" onclick="addTodo()">Add</button>
+      </div>
+    </div>
+
+    <div class="todo-list" id="todo-list">
+      <div class="result muted">Loading…</div>
+    </div>
+
+    <div class="todo-footer">
+      <span id="todo-count">0 items</span>
+      <button class="btn btn-ghost btn-sm btn-danger" onclick="clearTodos()">Clear all</button>
+    </div>
+  </div>
+
+  <!-- ── NOTES ── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon icon-green">📝</div>
+      <span class="card-title">Notes</span>
+      <span class="card-badge">server.vrb /api/notes</span>
+    </div>
+
+    <div>
+      <label>New note</label>
+      <textarea id="note-input" placeholder="Write anything…"></textarea>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-green" onclick="addNote()">Save Note</button>
+      <button class="btn btn-ghost btn-danger" onclick="clearNotes()" style="width:auto;padding:9px 14px">Clear</button>
+    </div>
+
+    <div>
+      <label>Saved notes</label>
+      <div class="notes-list" id="notes-list">
+        <div class="result muted">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COUNTER ── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon icon-amber">🔢</div>
+      <span class="card-title">Counter</span>
+      <span class="card-badge">server.vrb /api/counter</span>
+    </div>
+
+    <div class="counter-display">
+      <div class="counter-value" id="counter-value">0</div>
+      <div class="counter-label">persistent across reloads</div>
+    </div>
+
+    <div class="counter-btns">
+      <button class="btn btn-ghost btn-full" onclick="counterOp('decrement')">− Decrement</button>
+      <button class="btn btn-ghost btn-full btn-danger" onclick="counterOp('reset')">Reset</button>
+      <button class="btn btn-amber btn-full" onclick="counterOp('increment')">+ Increment</button>
+    </div>
+
+    <div class="result muted" id="counter-msg">Ready.</div>
   </div>
 
 </div>
 
 <script>
-  async function post(url, params) {
-    const body = new URLSearchParams(params).toString();
-    const r = await fetch(url, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" } });
-    return r.text();
+  // ── shared ──────────────────────────────────────────────────────────────────
+  async function api(url, params = null) {
+    if (params !== null) {
+      const body = new URLSearchParams(params).toString();
+      const r = await fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+      return { ok: r.ok, text: await r.text() };
+    }
+    const r = await fetch(url);
+    return { ok: r.ok, text: await r.text() };
   }
 
-  async function get(url) {
-    return (await fetch(url)).text();
-  }
+  // ── calculator ──────────────────────────────────────────────────────────────
+  let selectedOp = '+';
+  const calcHistory = [];
 
-  function show(id, text, isError = false) {
-    const el = document.getElementById(id);
-    el.textContent = text;
-    el.className = "result" + (isError ? " error" : "");
+  function selectOp(el, op) {
+    document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedOp = op;
   }
 
   async function calc() {
-    const a = document.getElementById("ca").value;
-    const b = document.getElementById("cb").value;
-    const op = document.getElementById("cop").value;
-    const out = await post("/calc", { a, b, op });
-    show("calc-result", `${a} ${op} ${b} = ${out}`, out.startsWith("Error"));
+    const a  = document.getElementById('ca').value;
+    const b  = document.getElementById('cb').value;
+    const op = selectedOp;
+    const { ok, text } = await api('/api/calc', { a, b, op });
+    const exprEl  = document.getElementById('calc-expr');
+    const valueEl = document.getElementById('calc-value');
+    if (ok) {
+      const data = JSON.parse(text);
+      exprEl.textContent  = data.expr;
+      valueEl.textContent = data.result;
+      calcHistory.unshift({ expr: data.expr, result: data.result });
+      if (calcHistory.length > 20) calcHistory.pop();
+      renderHistory();
+    } else {
+      exprEl.textContent  = 'Error';
+      valueEl.textContent = text;
+    }
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('calc-history');
+    if (!calcHistory.length) { el.innerHTML = '<span style="color:var(--muted);font-style:italic">No calculations yet.</span>'; return; }
+    el.innerHTML = calcHistory.map(h =>
+      `<div class="entry">${h.expr} <span>= ${h.result}</span></div>`
+    ).join('');
+  }
+
+  // ── todos ───────────────────────────────────────────────────────────────────
+  let todos = [];   // { text, done }
+
+  async function loadTodos() {
+    const { text } = await api('/api/todos');
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    todos = lines.map(l => {
+      if (l.startsWith('[x] ')) return { text: l.slice(4), done: true };
+      if (l.startsWith('[ ] ')) return { text: l.slice(4), done: false };
+      return { text: l, done: false };
+    });
+    renderTodos();
+  }
+
+  function renderTodos() {
+    const el = document.getElementById('todo-list');
+    const countEl = document.getElementById('todo-count');
+    const done = todos.filter(t => t.done).length;
+    countEl.textContent = `${todos.length} item${todos.length !== 1 ? 's' : ''} · ${done} done`;
+    if (!todos.length) {
+      el.innerHTML = '<div class="result muted">No todos yet. Add one above.</div>';
+      return;
+    }
+    el.innerHTML = todos.map((t, i) => `
+      <div class="todo-item ${t.done ? 'done' : ''}">
+        <div class="todo-check ${t.done ? 'checked' : ''}" onclick="toggleTodo(${i})"></div>
+        <span class="todo-text">${escHtml(t.text)}</span>
+        <span class="todo-del" onclick="deleteTodo(${i})" title="Delete">✕</span>
+      </div>`).join('');
   }
 
   async function addTodo() {
-    const item = document.getElementById("todo-input").value.trim();
+    const inp = document.getElementById('todo-input');
+    const item = inp.value.trim();
     if (!item) return;
-    const out = await post("/add_todo", { item });
-    show("todo-result", out, out.startsWith("Error"));
-    document.getElementById("todo-input").value = "";
+    await api('/api/todos/add', { item: '[ ] ' + item });
+    inp.value = '';
     loadTodos();
   }
 
-  async function loadTodos() {
-    const out = await get("/todos");
-    show("todo-result", out || "(empty)");
+  function toggleTodo(i) {
+    todos[i].done = !todos[i].done;
+    saveTodosToServer();
+  }
+
+  function deleteTodo(i) {
+    todos.splice(i, 1);
+    saveTodosToServer();
+  }
+
+  async function saveTodosToServer() {
+    await api('/api/todos/clear', {});
+    for (const t of todos) {
+      const prefix = t.done ? '[x] ' : '[ ] ';
+      await api('/api/todos/add', { item: prefix + t.text });
+    }
+    renderTodos();
   }
 
   async function clearTodos() {
-    const out = await post("/clear_todos", {});
-    show("todo-result", out, out.startsWith("Error"));
+    await api('/api/todos/clear', {});
+    todos = [];
+    renderTodos();
   }
 
+  // ── notes ───────────────────────────────────────────────────────────────────
+  async function loadNotes() {
+    const { text } = await api('/api/notes');
+    const el = document.getElementById('notes-list');
+    const notes = text.split('\n---\n').map(n => n.trim()).filter(n => n.length > 0);
+    if (!notes.length) {
+      el.innerHTML = '<div class="result muted">No notes yet.</div>';
+      return;
+    }
+    el.innerHTML = notes.map(n => `<div class="note-item">${escHtml(n)}</div>`).join('');
+  }
+
+  async function addNote() {
+    const inp = document.getElementById('note-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    await api('/api/notes/add', { text });
+    inp.value = '';
+    loadNotes();
+  }
+
+  async function clearNotes() {
+    await api('/api/notes/clear', {});
+    loadNotes();
+  }
+
+  // ── counter ─────────────────────────────────────────────────────────────────
+  async function loadCounter() {
+    const { text } = await api('/api/counter');
+    const data = JSON.parse(text);
+    document.getElementById('counter-value').textContent = data.value;
+  }
+
+  async function counterOp(op) {
+    const { ok, text } = await api(`/api/counter/${op}`, {});
+    const el    = document.getElementById('counter-value');
+    const msgEl = document.getElementById('counter-msg');
+    if (ok) {
+      const data = JSON.parse(text);
+      el.textContent = data.value;
+      el.classList.add('bump');
+      setTimeout(() => el.classList.remove('bump'), 150);
+      msgEl.textContent = op === 'reset' ? 'Counter reset to 0.' : `Counter ${op}ed to ${data.value}.`;
+      msgEl.className = 'result muted';
+    } else {
+      msgEl.textContent = text;
+      msgEl.className = 'result error';
+    }
+  }
+
+  // ── utils ────────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── init ─────────────────────────────────────────────────────────────────────
   loadTodos();
+  loadNotes();
+  loadCounter();
 </script>
 </body>
 </html>

@@ -1,6 +1,0 @@
-try:
-    load file called "todos.txt" into content.
-    say content.
-on error:
-    say "No todos yet.".
-end.
