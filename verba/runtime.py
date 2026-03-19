@@ -240,9 +240,8 @@ class Interpreter:
         if isinstance(s, ast.Match):
             subject_val = self._eval_expr(s.subject, env=env, context="general")
             for br in s.branches:
-                match_env = Environment(parent=env)
-                if self._match_pattern(br.pattern, subject_val, match_env):
-                    self._exec_block(br.body, env=match_env)
+                if self._match_pattern(br.pattern, subject_val, env):
+                    self._exec_block(br.body, env=env)
                     return
             if s.else_body:
                 self._exec_block(s.else_body, env=env)
@@ -684,13 +683,17 @@ class Interpreter:
             return
 
         if isinstance(s, ast.AsyncDefine):
-            self.functions[s.name] = s
+            env.functions[s.name] = s
             return
 
         if isinstance(s, ast.AsyncRun):
             import threading
             task_env = Environment(parent=self.globals)
-            for p, a in zip(self.functions[s.func_name].params, s.args):
+            fn_def = env.get_function(s.func_name)
+            if not fn_def:
+                raise VerbaRuntimeError(f"I don't know a function called {s.func_name}.", line_no=ln)
+                
+            for p, a in zip(fn_def.params, s.args):
                 task_env.set(p, self._eval_expr(a, env=env, context="general"))
                 
             task = {"result": None, "done": False, "error": None}
@@ -698,7 +701,7 @@ class Interpreter:
                 try:
                     res = None
                     try:
-                        self._exec_block(self.functions[s.func_name].body, env=task_env)
+                        self._exec_block(fn_def.body, env=task_env)
                     except _ReturnSignal as r:
                          res = r.value
                     task["result"] = res

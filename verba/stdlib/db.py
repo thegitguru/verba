@@ -16,7 +16,7 @@ class _DBConn:
             self.conn.commit()
             return cursor.rowcount
         except Exception as e:
-            print(f"DB Execute Error: {e} | SQL: {sql} | Args: {args}")
+            print(f"DB Execute Error: {e} | SQL: {repr(sql)} | Args: {repr(args)}")
             return str(e)
 
     def query(self, sql, args=None):

@@ -30,10 +30,12 @@ from .ast import (
     ListAdd,
     ListItemGet,
     ListLiteral,
+    ListRemove,
     ListComprehension,
     MapLiteral,
     MapComprehension,
     WithStmt,
+    ListLength,
     MatchPattern,
     ValuePattern,
     VariablePattern,
@@ -254,6 +256,23 @@ def _parse_atom(tokens: list[Token], tokens_lc: list[str], i: int, *, span: Span
             return _parse_interpolated(raw_str, span), i + 1
         return Literal(span, raw_str), i + 1
 
+    if t.value == "(":
+        # find matching )
+        depth = 0
+        end_idx = -1
+        for j in range(i, len(tokens)):
+            if tokens[j].value == "(": depth += 1
+            elif tokens[j].value == ")":
+                depth -= 1
+                if depth == 0:
+                    end_idx = j
+                    break
+        if end_idx == -1:
+            raise VerbaParseError("I expected a closing parenthesis ')'.", line_no=span.line_no)
+        # Parse the inside as an expression
+        inner = parse_expr(tokens[i+1 : end_idx], line_no=span.line_no)
+        return inner, end_idx + 1
+
     if "." in t.value and t.value.count(".") >= 1 and not t.value.startswith('"') and not t.value.startswith("'"):
         # Check that it's not JUST a dot or a decimal number
         # Already handled numbers earlier
@@ -434,7 +453,7 @@ def parse_expr(tokens: list[Token], *, line_no: int) -> Expr:
                 if_i = tokens_lc.index("if", in_i + 1)
                 list_toks = tokens[in_i + 1 : if_i]
                 cond_toks = tokens[if_i + 1 :]
-                cond_expr = BoolExprFromExpr(span, parse_expr(cond_toks, line_no=line_no))
+                cond_expr = parse_condition(cond_toks, line_no=line_no)
             else:
                 list_toks = tokens[in_i + 1 :]
                 cond_expr = None
@@ -1290,10 +1309,9 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             _require_period(wl, wl_no)
             if wl_lc[0] == "when":
                 # when <pattern>: ...
-                colon_i = next((idx for idx, t in enumerate(wl.tokens) if t.value == ":"), -1)
-                if colon_i == -1:
+                if wl.tokens[-1].value != ":":
                     raise VerbaParseError("A 'when' line must end with ':'", line_no=wl_no, line=wl.raw)
-                pattern = _parse_pattern(wl.tokens[1:colon_i], line_no=wl_no)
+                pattern = _parse_pattern(wl.tokens[1:-1], line_no=wl_no)
                 cur.i += 1
                 branch_body = _parse_block(cur, expected_indent=inner_indent + 4)
                 branches.append(MatchBranch(pattern, branch_body))
