@@ -358,7 +358,7 @@
     <div class="card-header">
       <div class="card-icon icon-cyan">✅</div>
       <span class="card-title">To-Do List</span>
-      <span class="card-badge">server.vrb /api/todos</span>
+      <span class="card-badge">localStorage</span>
     </div>
 
     <div>
@@ -385,7 +385,7 @@
     <div class="card-header">
       <div class="card-icon icon-green">📝</div>
       <span class="card-title">Notes</span>
-      <span class="card-badge">server.vrb /api/notes</span>
+      <span class="card-badge">localStorage</span>
     </div>
 
     <div>
@@ -481,17 +481,15 @@
   }
 
   // ── todos ───────────────────────────────────────────────────────────────────
-  let todos = [];   // { text, done }
+  let todos = [];
 
-  async function loadTodos() {
-    const { text } = await api('/api/todos');
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    todos = lines.map(l => {
-      if (l.startsWith('[x] ')) return { text: l.slice(4), done: true };
-      if (l.startsWith('[ ] ')) return { text: l.slice(4), done: false };
-      return { text: l, done: false };
-    });
+  function loadTodos() {
+    todos = JSON.parse(localStorage.getItem('verba_todos') || '[]');
     renderTodos();
+  }
+
+  function saveTodos() {
+    localStorage.setItem('verba_todos', JSON.stringify(todos));
   }
 
   function renderTodos() {
@@ -511,45 +509,38 @@
       </div>`).join('');
   }
 
-  async function addTodo() {
+  function addTodo() {
     const inp = document.getElementById('todo-input');
     const item = inp.value.trim();
     if (!item) return;
-    await api('/api/todos/add', { item: '[ ] ' + item });
+    todos.push({ text: item, done: false });
+    saveTodos();
     inp.value = '';
-    loadTodos();
+    renderTodos();
   }
 
   function toggleTodo(i) {
     todos[i].done = !todos[i].done;
-    saveTodosToServer();
+    saveTodos();
+    renderTodos();
   }
 
   function deleteTodo(i) {
     todos.splice(i, 1);
-    saveTodosToServer();
-  }
-
-  async function saveTodosToServer() {
-    await api('/api/todos/clear', {});
-    for (const t of todos) {
-      const prefix = t.done ? '[x] ' : '[ ] ';
-      await api('/api/todos/add', { item: prefix + t.text });
-    }
+    saveTodos();
     renderTodos();
   }
 
-  async function clearTodos() {
-    await api('/api/todos/clear', {});
+  function clearTodos() {
     todos = [];
+    saveTodos();
     renderTodos();
   }
 
   // ── notes ───────────────────────────────────────────────────────────────────
-  async function loadNotes() {
-    const { text } = await api('/api/notes');
+  function loadNotes() {
+    const notes = JSON.parse(localStorage.getItem('verba_notes') || '[]');
     const el = document.getElementById('notes-list');
-    const notes = text.split('\n---\n').map(n => n.trim()).filter(n => n.length > 0);
     if (!notes.length) {
       el.innerHTML = '<div class="result muted">No notes yet.</div>';
       return;
@@ -557,17 +548,19 @@
     el.innerHTML = notes.map(n => `<div class="note-item">${escHtml(n)}</div>`).join('');
   }
 
-  async function addNote() {
+  function addNote() {
     const inp = document.getElementById('note-input');
     const text = inp.value.trim();
     if (!text) return;
-    await api('/api/notes/add', { text });
+    const notes = JSON.parse(localStorage.getItem('verba_notes') || '[]');
+    notes.push(text);
+    localStorage.setItem('verba_notes', JSON.stringify(notes));
     inp.value = '';
     loadNotes();
   }
 
-  async function clearNotes() {
-    await api('/api/notes/clear', {});
+  function clearNotes() {
+    localStorage.removeItem('verba_notes');
     loadNotes();
   }
 

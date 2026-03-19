@@ -17,10 +17,6 @@ define ok needing body:
     respond with body status 200 type "application/json".
 end.
 
-define ok_text needing body:
-    respond with body status 200 type "text/plain".
-end.
-
 define bad needing msg:
     respond with msg status 400 type "text/plain".
 end.
@@ -79,66 +75,6 @@ on route "/api/calc" with method "POST":
             out = join '{"result":"', result, '","expr":"', a, ' % ', b, '"}' .
             run ok with out.
         end.
-    on error saving to err:
-        run bad with err.
-    end.
-end.
-
-note ── TODOS ─────────────────────────────────────────────────────────────────
-
-on route "/api/todos" with method "GET":
-    content = the result of running read_file with "examples/webapp/todos.txt".
-    respond with content status 200 type "text/plain".
-end.
-
-on route "/api/todos/add" with method "POST":
-    item = request.form_item.
-    if item is null:
-        run bad with "missing item".
-    end.
-    try:
-        append item to file called "examples/webapp/todos.txt".
-        append "\n" to file called "examples/webapp/todos.txt".
-        run ok_text with "added".
-    on error saving to err:
-        run bad with err.
-    end.
-end.
-
-on route "/api/todos/clear" with method "POST":
-    try:
-        save "" to file called "examples/webapp/todos.txt".
-        run ok_text with "cleared".
-    on error saving to err:
-        run bad with err.
-    end.
-end.
-
-note ── NOTES ─────────────────────────────────────────────────────────────────
-
-on route "/api/notes" with method "GET":
-    content = the result of running read_file with "examples/webapp/notes.txt".
-    respond with content status 200 type "text/plain".
-end.
-
-on route "/api/notes/add" with method "POST":
-    note_text = request.form_text.
-    if note_text is null:
-        run bad with "missing text".
-    end.
-    try:
-        append note_text to file called "examples/webapp/notes.txt".
-        append "\n---\n" to file called "examples/webapp/notes.txt".
-        run ok_text with "saved".
-    on error saving to err:
-        run bad with err.
-    end.
-end.
-
-on route "/api/notes/clear" with method "POST":
-    try:
-        save "" to file called "examples/webapp/notes.txt".
-        run ok_text with "cleared".
     on error saving to err:
         run bad with err.
     end.

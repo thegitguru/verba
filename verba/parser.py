@@ -195,7 +195,8 @@ def _parse_atom(tokens: list[Token], tokens_lc: list[str], i: int, *, span: Span
         return BinaryOp(span, "*", Literal(span, -1), inner), next_i
 
     if (t.value.startswith('"') and t.value.endswith('"')) or (t.value.startswith("'") and t.value.endswith("'")):
-        return Literal(span, t.value[1:-1]), i + 1
+        raw_str = t.value[1:-1].replace('\\n', '\n').replace('\\t', '\t').replace('\\r', '\r')
+        return Literal(span, raw_str), i + 1
         
     if "." in t.value and t.value.count(".") >= 1:
         parts = t.value.split(".")
