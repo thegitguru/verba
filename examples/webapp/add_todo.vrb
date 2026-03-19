@@ -1,0 +1,10 @@
+ask the user "item?" and save to item.
+
+try:
+    append item to file called "todos.txt".
+    append "
+" to file called "todos.txt".
+    say "Added: ", item.
+on error saving to msg:
+    say "Error: ", msg.
+end.

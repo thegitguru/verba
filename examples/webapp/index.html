@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verba Web App</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    h1 { color: #a78bfa; font-size: 1.6rem; margin-bottom: 6px; }
+    .subtitle { color: #475569; font-size: 0.85rem; margin-bottom: 40px; }
+    .subtitle code { color: #7c3aed; background: #1e2130; padding: 1px 6px; border-radius: 4px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      max-width: 900px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .card h2 { font-size: 1rem; color: #c4b5fd; margin-bottom: 16px; }
+
+    label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
+
+    input, select {
+      width: 100%;
+      background: #0f1117;
+      color: #e2e8f0;
+      border: 1px solid #3b4168;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+
+    button {
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 6px;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+      margin-bottom: 8px;
+    }
+    button:hover { opacity: .85; }
+    button.secondary { background: #1e2130; color: #94a3b8; border: 1px solid #3b4168; }
+
+    .result {
+      margin-top: 14px;
+      padding: 12px;
+      background: #0b0d14;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.88rem;
+      color: #86efac;
+      white-space: pre-wrap;
+      min-height: 40px;
+    }
+    .result.error { color: #f87171; }
+
+    .badge {
+      display: inline-block;
+      background: #7c3aed22;
+      color: #a78bfa;
+      border: 1px solid #7c3aed55;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      padding: 1px 7px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<h1>⬡ Verba Web App</h1>
+<p class="subtitle">
+  HTML frontend · <code>server.py</code> HTTP runner ·
+  <strong style="color:#c4b5fd">all logic in <code>.vrb</code> files</strong>
+</p>
+
+<div class="grid">
+
+  <!-- Calculator -->
+  <div class="card">
+    <h2>Calculator <span class="badge">calc.vrb</span></h2>
+    <div class="row">
+      <div style="flex:1">
+        <label>A</label>
+        <input id="ca" type="number" value="10" />
+      </div>
+      <div style="flex:1">
+        <label>B</label>
+        <input id="cb" type="number" value="3" />
+      </div>
+    </div>
+    <label>Operator</label>
+    <select id="cop">
+      <option>+</option>
+      <option>-</option>
+      <option>*</option>
+      <option>/</option>
+      <option>%</option>
+    </select>
+    <button onclick="calc()">Calculate</button>
+    <div class="result" id="calc-result">Result will appear here.</div>
+  </div>
+
+  <!-- To-Do List -->
+  <div class="card">
+    <h2>To-Do List <span class="badge">add_todo.vrb · list_todos.vrb</span></h2>
+    <label>New item</label>
+    <input id="todo-input" type="text" placeholder="e.g. Buy groceries" />
+    <button onclick="addTodo()">Add Item</button>
+    <button class="secondary" onclick="loadTodos()">Refresh List</button>
+    <button class="secondary" onclick="clearTodos()">Clear All</button>
+    <div class="result" id="todo-result">Click "Refresh List" to load todos.</div>
+  </div>
+
+</div>
+
+<script>
+  async function post(url, params) {
+    const body = new URLSearchParams(params).toString();
+    const r = await fetch(url, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+    return r.text();
+  }
+
+  async function get(url) {
+    return (await fetch(url)).text();
+  }
+
+  function show(id, text, isError = false) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = "result" + (isError ? " error" : "");
+  }
+
+  async function calc() {
+    const a = document.getElementById("ca").value;
+    const b = document.getElementById("cb").value;
+    const op = document.getElementById("cop").value;
+    const out = await post("/calc", { a, b, op });
+    show("calc-result", `${a} ${op} ${b} = ${out}`, out.startsWith("Error"));
+  }
+
+  async function addTodo() {
+    const item = document.getElementById("todo-input").value.trim();
+    if (!item) return;
+    const out = await post("/add_todo", { item });
+    show("todo-result", out, out.startsWith("Error"));
+    document.getElementById("todo-input").value = "";
+    loadTodos();
+  }
+
+  async function loadTodos() {
+    const out = await get("/todos");
+    show("todo-result", out || "(empty)");
+  }
+
+  async function clearTodos() {
+    const out = await post("/clear_todos", {});
+    show("todo-result", out, out.startsWith("Error"));
+  }
+
+  loadTodos();
+</script>
+</body>
+</html>

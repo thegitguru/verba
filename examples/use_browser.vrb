@@ -1,0 +1,32 @@
+note use_browser.vrb — puppeteer-like browser automation demo
+note Requires: pip install playwright && python -m playwright install chromium
+note Run: python -m verba examples/use_browser.vrb
+
+note --- open a page ---
+title = the result of running browser.open with "https://example.com", "true".
+say "page title: ", title.
+
+note --- read an element ---
+heading = the result of running browser.read with "h1".
+say "h1 text: ", heading.
+
+note --- take a screenshot ---
+path = the result of running browser.screenshot with "example_screenshot.png".
+say "screenshot saved to: ", path.
+
+note --- navigate to another page ---
+title2 = the result of running browser.goto with "https://httpbin.org".
+say "new title: ", title2.
+
+note --- wait 500ms then read the page title ---
+run browser.wait with "500".
+t = the result of running browser.title.
+say "title after wait: ", t.
+
+note --- evaluate JavaScript ---
+result = the result of running browser.eval with "document.querySelectorAll('a').length".
+say "number of links: ", result.
+
+note --- close the browser ---
+run browser.close.
+say "browser closed.".

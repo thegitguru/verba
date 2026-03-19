@@ -311,6 +311,48 @@ class AwaitStmt(Stmt):
     task_name: str
 
 
+# --- HTTP server nodes ---
+
+@dataclass(frozen=True)
+class ServeStart(Stmt):
+    """serve on port <expr>."""
+    span: Span
+    port: Expr
+
+
+@dataclass(frozen=True)
+class ServeRoute(Stmt):
+    """on route <path_expr> with method <method_expr>:  ...body...  end."""
+    span: Span
+    path: Expr
+    method: Expr
+    body: list["Stmt"]
+
+
+@dataclass(frozen=True)
+class ServeRespond(Stmt):
+    """respond with <part>, <part>, ... status <code_expr> type <mime_expr>."""
+    span: Span
+    parts: list[Expr]
+    status: Expr
+    mime: Expr
+
+
+@dataclass(frozen=True)
+class ServeRedirect(Stmt):
+    """redirect to <url_expr> status <code_expr>."""
+    span: Span
+    url: Expr
+    status: Expr
+
+
+@dataclass(frozen=True)
+class StringConcat(Expr):
+    """join <part>, <part>, ... — concatenates values into a string."""
+    span: Span
+    parts: list[Expr]
+
+
 # --- Pointer nodes ---
 
 @dataclass(frozen=True)

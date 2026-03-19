@@ -53,6 +53,11 @@ from .ast import (
     Ref,
     Deref,
     DerefSet,
+    ServeStart,
+    ServeRoute,
+    ServeRespond,
+    ServeRedirect,
+    StringConcat,
 )
 from .errors import VerbaParseError
 from .tokenize import LineTokens, tokenize_program, Token
@@ -162,6 +167,11 @@ def _parse_atom(tokens: list[Token], tokens_lc: list[str], i: int, *, span: Span
     # deref ptr — dereference read
     if tl == "deref" and i + 1 < len(tokens):
         return Deref(span, tokens[i + 1].value.lower()), i + 2
+
+    # join <part>, <part>, ... — string concatenation expression
+    if tl == "join":
+        parts = [parse_expr(p, line_no=span.line_no) for p in _split_by_commas(tokens[i + 1:]) if p]
+        return StringConcat(span, parts), len(tokens)
 
     num = _parse_number(t.value)
     if num is not None:
@@ -445,7 +455,7 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         "repeat", "define", "async", "run", "let", "set", "increase",
         "decrease", "save", "load", "import", "class", "free", "delete",
         "fetch", "append", "note", "try", "otherwise", "else", "end", "give", "return",
-        "await", "deref"
+        "await", "deref", "serve", "on", "respond"
     }
     is_keyword_stmt = first_val in _STATEMENT_KEYWORDS
 
@@ -851,6 +861,73 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         value = parse_expr(tokens[eq_i + 1:], line_no=line_no)
         cur.i += 1
         return DerefSet(span, ptr_name, value)
+
+    # serve on port <expr>.
+    if tokens_lc[:3] == ["serve", "on", "port"]:
+        port_expr = parse_expr(tokens[3:], line_no=line_no)
+        cur.i += 1
+        return ServeStart(span, port_expr)
+
+    # on route <path> with method <method>:
+    if tokens_lc[0] == "on" and "route" in tokens_lc:
+        if term_val != ":":
+            raise VerbaParseError("An 'on route' block must end with ':'", line_no=line_no, col=tokens[-1].col, line=lt.raw)
+        route_i = tokens_lc.index("route")
+        if "with" in tokens_lc and "method" in tokens_lc:
+            with_i = tokens_lc.index("with")
+            method_i = tokens_lc.index("method")
+            path_expr = parse_expr(tokens[route_i + 1 : with_i], line_no=line_no)
+            method_expr = parse_expr(tokens[method_i + 1 :], line_no=line_no)
+        else:
+            path_expr = parse_expr(tokens[route_i + 1 :], line_no=line_no)
+            method_expr = Literal(span, "GET")
+        cur.i += 1
+        body = _parse_block(cur, expected_indent=expected_indent + 4)
+        if cur.i >= len(cur.lines):
+            raise VerbaParseError("I expected 'end.'", line_no=line_no)
+        end_line = cur.lines[cur.i]
+        end_no = cur.i + 1
+        if end_line.indent != expected_indent or not end_line.tokens or end_line.tokens[0].value.lower() != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, col=end_line.indent, line=end_line.raw)
+        _require_period(end_line, end_no)
+        cur.i += 1
+        return ServeRoute(span, path_expr, method_expr, body)
+
+    # redirect to <url> status <code>.
+    if tokens_lc[:2] == ["redirect", "to"]:
+        status_i = tokens_lc.index("status") if "status" in tokens_lc else -1
+        url_end = status_i if status_i != -1 else len(tokens)
+        url_expr = parse_expr(tokens[2:url_end], line_no=line_no)
+        status_expr = parse_expr(tokens[status_i + 1:], line_no=line_no) if status_i != -1 else Literal(span, 302)
+        cur.i += 1
+        return ServeRedirect(span, url_expr, status_expr)
+
+    # respond with <part>, <part>, ... status <code> type <mime>.
+    if tokens_lc[0] == "respond" and "with" in tokens_lc:
+        with_i = tokens_lc.index("with")
+        # find optional 'status' and 'type' keywords (only outside quoted strings)
+        status_i = -1
+        type_i   = -1
+        for _ki, _kt in enumerate(tokens_lc):
+            if _ki <= with_i:
+                continue
+            if _kt == "status" and status_i == -1:
+                # make sure it's not inside a string token
+                if not (tokens[_ki].value.startswith('"') or tokens[_ki].value.startswith("'")):
+                    status_i = _ki
+            elif _kt == "type" and type_i == -1:
+                if not (tokens[_ki].value.startswith('"') or tokens[_ki].value.startswith("'")):
+                    type_i = _ki
+        body_end = min(i for i in [status_i, type_i, len(tokens)] if i > with_i)
+        # comma-split the body parts
+        body_tokens = tokens[with_i + 1 : body_end]
+        body_parts = [parse_expr(p, line_no=line_no) for p in _split_by_commas(body_tokens) if p]
+        if not body_parts:
+            body_parts = [Literal(span, "")]
+        status_expr = parse_expr(tokens[status_i + 1 : (type_i if type_i != -1 and type_i > status_i else len(tokens))], line_no=line_no) if status_i != -1 else Literal(span, 200)
+        mime_expr   = parse_expr(tokens[type_i + 1 :], line_no=line_no) if type_i != -1 else Literal(span, "text/html")
+        cur.i += 1
+        return ServeRespond(span, body_parts, status_expr, mime_expr)
 
     # try:
     if tokens_lc == ["try"]:

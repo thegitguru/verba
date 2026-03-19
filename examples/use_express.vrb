@@ -1,0 +1,55 @@
+note use_express.vrb — express-like server demo
+note Run: python -m verba examples/use_express.vrb
+
+note --- static files ---
+run express.use with "examples/webapp", "/static".
+
+note --- define route handlers as plain Verba functions ---
+
+define handle_home:
+    respond with "<h1>Welcome to Verba Express!</h1><p><a href='/greet?name=World'>greet</a> | <a href='/users/42'>user 42</a> | <a href='/json'>json</a></p>" status 200 type "text/html".
+end.
+
+define handle_greet:
+    name = request.query_name.
+    if name is null:
+        name = "stranger".
+    end.
+    html = join "<h1>Hello, ", name, "!</h1>".
+    respond with html status 200 type "text/html".
+end.
+
+define handle_user:
+    id = request.param_id.
+    body = join '{"id":"', id, '","name":"User ', id, '"}'.
+    respond with body status 200 type "application/json".
+end.
+
+define handle_json:
+    payload = the result of running express.json_build with "language", "Verba", "version", "0.1".
+    respond with payload status 200 type "application/json".
+end.
+
+define handle_echo:
+    msg = request.body.
+    if msg is null:
+        msg = "".
+    end.
+    out = the result of running express.json_build with "echo", msg.
+    respond with out status 200 type "application/json".
+end.
+
+define handle_not_found:
+    respond with "404 - Not Found" status 404 type "text/plain".
+end.
+
+note --- register routes ---
+run express.get with "/", "handle_home".
+run express.get with "/greet", "handle_greet".
+run express.get with "/users/:id", "handle_user".
+run express.get with "/json", "handle_json".
+run express.post with "/echo", "handle_echo".
+run express.get with "*", "handle_not_found".
+
+note --- start server (blocks) ---
+run express.listen with "5000".

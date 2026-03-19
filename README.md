@@ -97,6 +97,19 @@ Operators: `+`, `-`, `*`, `/`, `%`
 
 ---
 
+### String Concatenation
+
+Use `join` to combine values into a single string:
+
+```vb
+greeting = join "Hello, ", name, "!".
+say greeting.
+```
+
+`join` works anywhere an expression is expected — assignments, `respond with`, function arguments.
+
+---
+
 ### Conditions
 
 ```vb
@@ -188,6 +201,16 @@ on error saving to error_message:
 end.
 ```
 
+Silent catch (no error variable):
+
+```vb
+try:
+    x = 1 / 0.
+on error:
+    say "caught silently.".
+end.
+```
+
 ---
 
 ### Imports
@@ -219,6 +242,307 @@ if ptr is null:
     say "no target.".
 end.
 ```
+
+---
+
+## Advanced Capabilities
+
+### 1. Object-Oriented Programming
+
+```vb
+class Person:
+    define init needing first_name:
+        self.name = first_name.
+    end.
+    define walk:
+        say self.name, " is walking.".
+    end.
+end.
+
+p = new Person with "Alice".
+run p.walk.
+p.name = "Bob".
+run p.walk.
+```
+
+---
+
+### 2. File I/O
+
+```vb
+append "Server Starting..." to file called "output.log".
+
+message = "hello".
+save message to file called "out.txt".
+
+load file called "out.txt" into loaded_message.
+say loaded_message.
+
+delete file called "out.txt".
+```
+
+---
+
+### 3. Simple HTTP Fetch
+
+```vb
+fetch "http://example.com" into site_html.
+say "Fetched! HTML: ", site_html.
+
+free site_html.
+```
+
+---
+
+### 4. Asynchronous Concurrency
+
+```vb
+async define background_work needing server_url:
+    fetch server_url into html.
+    say "background job running".
+    give html.
+end.
+
+task = async run background_work with "https://example.com".
+say "Doing something else on the main thread!".
+await result = task.
+say "Async finished! Result: ", result.
+```
+
+---
+
+### 5. Pointers
+
+```vb
+x = 10.
+ptr = &x.
+say deref ptr.        /- prints 10
+deref ptr = 99.       /- x is now 99
+say x.                /- prints 99
+
+y = 5.
+ptr = &y.
+deref ptr = 0.
+say y.                /- prints 0
+
+ptr = null.
+if ptr is null:
+    say "no target.".
+end.
+```
+
+---
+
+### 6. Built-in HTTP Server
+
+Define routes with `on route`, respond with `respond with`, redirect with `redirect to`, then start with `serve on port`.
+
+```vb
+on route "/" with method "GET":
+    respond with "<h1>Hello!</h1>" status 200 type "text/html".
+end.
+
+on route "/greet" with method "GET":
+    name = request.query_name.
+    if name is null:
+        name = "stranger".
+    end.
+    html = join "<h1>Hello, ", name, "!</h1>".
+    respond with html status 200 type "text/html".
+end.
+
+on route "/echo" with method "POST":
+    respond with request.body status 200 type "text/plain".
+end.
+
+on route "/old" with method "GET":
+    redirect to "/new" status 301.
+end.
+
+serve on port 5000.
+```
+
+**Request object** available inside every route handler:
+
+| Property | Value |
+|---|---|
+| `request.method` | `"GET"`, `"POST"`, etc. |
+| `request.path` | `/greet` |
+| `request.body` | raw request body string |
+| `request.query_<key>` | query string value, e.g. `request.query_name` |
+| `request.form_<key>` | form-encoded POST value |
+
+**`respond with`** accepts comma-separated parts (like `say`):
+
+```vb
+respond with "<b>", name, "</b>" status 200 type "text/html".
+```
+
+Stop the server with `Ctrl+C`. To force-kill:
+
+```bash
+netstat -ano | findstr :5000
+taskkill /PID <pid> /F
+```
+
+---
+
+## Standard Library Modules
+
+Three modules are available in every Verba program without any import — `http`, `browser`, and `express`.
+
+---
+
+### `http` — Axios-like HTTP Client
+
+```vb
+res = the result of running http.get with "https://api.example.com/data".
+say "status: ", res.status.
+say "body:   ", res.body.
+```
+
+**Response object properties:** `res.status`, `res.ok`, `res.body`, `res.data`
+
+| Function | Description |
+|---|---|
+| `http.get with url` | GET request |
+| `http.get with url, headers` | GET with custom headers (JSON string) |
+| `http.post with url, body` | POST form-encoded body |
+| `http.post with url, body, headers` | POST with custom headers |
+| `http.post_json with url, json` | POST with `Content-Type: application/json` |
+| `http.put with url, body` | PUT request |
+| `http.delete with url` | DELETE request |
+| `http.encode_form with json` | Encode a JSON object as `key=value&...` |
+| `http.encode_url with base, json` | Append query params to a URL |
+
+**Example — POST JSON:**
+
+```vb
+res = the result of running http.post_json with "https://httpbin.org/post", '{"hello":"world"}'.
+say "status: ", res.status.
+```
+
+**Example — URL with query params:**
+
+```vb
+url = the result of running http.encode_url with "https://api.example.com/search", '{"q":"verba","page":"1"}'.
+res = the result of running http.get with url.
+say res.body.
+```
+
+**Example — error handling:**
+
+```vb
+try:
+    res = the result of running http.get with "https://httpbin.org/status/404".
+    say "status: ", res.status.
+    say "ok: ", res.ok.
+on error saving to err:
+    say "request failed: ", err.
+end.
+```
+
+> Use single-quoted strings `'...'` when your JSON contains double quotes.
+
+---
+
+### `browser` — Puppeteer-like Browser Automation
+
+Requires Playwright:
+
+```bash
+pip install playwright
+python -m playwright install chromium
+```
+
+```vb
+title = the result of running browser.open with "https://example.com", "true".
+say "title: ", title.
+
+heading = the result of running browser.read with "h1".
+say "h1: ", heading.
+
+run browser.screenshot with "shot.png".
+run browser.close.
+```
+
+| Function | Description |
+|---|---|
+| `browser.open with url, headless` | Open browser and navigate (`"true"`/`"false"`) |
+| `browser.goto with url` | Navigate to a new URL |
+| `browser.click with selector` | Click an element |
+| `browser.type with selector, text` | Fill an input field |
+| `browser.read with selector` | Get inner text of an element |
+| `browser.read_html with selector` | Get inner HTML of an element |
+| `browser.screenshot with path` | Save a screenshot |
+| `browser.wait with ms` | Wait for a number of milliseconds |
+| `browser.wait_for with selector` | Wait until an element appears |
+| `browser.title` | Get the current page title |
+| `browser.url` | Get the current page URL |
+| `browser.eval with js` | Evaluate a JavaScript expression |
+| `browser.close` | Close the browser |
+
+**Example — form automation:**
+
+```vb
+run browser.open with "https://example.com/login", "false".
+run browser.type with "#username", "alice".
+run browser.type with "#password", "secret".
+run browser.click with "button[type=submit]".
+run browser.wait_for with ".dashboard".
+run browser.screenshot with "dashboard.png".
+run browser.close.
+```
+
+---
+
+### `express` — Express-like Router
+
+Handlers are plain Verba `define` functions. Register them by name, then call `express.listen`.
+
+```vb
+define handle_home:
+    respond with "<h1>Hello from Express!</h1>" status 200 type "text/html".
+end.
+
+define handle_user:
+    id = request.param_id.
+    body = join '{"id":"', id, '"}'.
+    respond with body status 200 type "application/json".
+end.
+
+define handle_echo:
+    out = the result of running express.json_build with "echo", request.body.
+    respond with out status 200 type "application/json".
+end.
+
+define handle_404:
+    respond with "Not Found" status 404 type "text/plain".
+end.
+
+run express.use with "public", "/static".
+run express.get with "/", "handle_home".
+run express.get with "/users/:id", "handle_user".
+run express.post with "/echo", "handle_echo".
+run express.get with "*", "handle_404".
+
+run express.listen with "5000".
+```
+
+**Route parameter** `:name` is available as `request.param_name`.
+
+| Function | Description |
+|---|---|
+| `express.get with path, handler` | Register a GET route |
+| `express.post with path, handler` | Register a POST route |
+| `express.put with path, handler` | Register a PUT route |
+| `express.delete with path, handler` | Register a DELETE route |
+| `express.use with dir, prefix` | Serve static files from `dir` at URL `prefix` |
+| `express.listen with port` | Start the server (blocks) |
+| `express.json_build with k, v, ...` | Build a JSON object from key/value pairs |
+| `express.json_key with json, key` | Extract a key from a JSON string |
+| `express.json_arr_len with json` | Length of a JSON array |
+| `express.json_arr_item with json, i` | Item at index `i` of a JSON array |
 
 ---
 
@@ -493,87 +817,142 @@ say "after deref q = 20, z = ", z.
 
 ---
 
-## Advanced Capabilities
-
-### 1. Object-Oriented Programming
+### 12. http_server.vrb — Built-in HTTP Server
 
 ```vb
-class Person:
-    define init needing first_name:
-        self.name = first_name.
+on route "/" with method "GET":
+    respond with "<h1>Hello from Verba!</h1>" status 200 type "text/html".
+end.
+
+on route "/greet" with method "GET":
+    name = request.query_name.
+    if name is null:
+        name = "stranger".
     end.
-    define walk:
-        say self.name, " is walking.".
+    html = join "<h1>Hello, ", name, "!</h1>".
+    respond with html status 200 type "text/html".
+end.
+
+on route "/echo" with method "POST":
+    respond with request.body status 200 type "text/plain".
+end.
+
+on route "/old-ping" with method "GET":
+    redirect to "/ping" status 301.
+end.
+
+on route "/count" with method "GET":
+    n = request.query_n.
+    if n is null:
+        n = 3.
     end.
+    counter = 1.
+    output = "".
+    while counter <= n:
+        output = join output, counter, " ".
+        counter += 1.
+    end.
+    respond with output status 200 type "text/plain".
 end.
 
-p = new Person with "Alice".
-run p.walk.
-p.name = "Bob".
-run p.walk.
+serve on port 5000.
 ```
 
-### 2. File I/O & System Streams
-
-```vb
-append "Server Starting..." to file called "output.log".
-
-message = "hello".
-save message to file called "out.txt".
-
-load file called "out.txt" into loaded_message.
-say loaded_message.
-
-delete file called "out.txt".
+Run with:
+```bash
+python -m verba examples/http_server.vrb
 ```
 
-### 3. HTTP Networking
+---
+
+### 13. use_http.vrb — HTTP Client (axios-like)
 
 ```vb
-fetch "http://example.com" into site_html.
-say "Fetched! HTML: ", site_html.
+res = the result of running http.get with "https://httpbin.org/get".
+say "status: ", res.status.
+say "body: ", res.body.
+
+form = the result of running http.encode_form with '{"name":"Verba","lang":"vrb"}'.
+res2 = the result of running http.post with "https://httpbin.org/post", form.
+say "POST status: ", res2.status.
+
+res3 = the result of running http.post_json with "https://httpbin.org/post", '{"hello":"world"}'.
+say "POST JSON status: ", res3.status.
+
+url = the result of running http.encode_url with "https://httpbin.org/get", '{"q":"verba","page":"1"}'.
+res4 = the result of running http.get with url.
+say "GET with params status: ", res4.status.
 ```
 
-### 4. Memory Management
-
-```vb
-fetch "http://some-giant-API.com/huge-payload" into massive_variable.
-free massive_variable.
+Run with:
+```bash
+python -m verba examples/use_http.vrb
 ```
 
-### 5. Asynchronous Concurrency
+---
+
+### 14. use_browser.vrb — Browser Automation (puppeteer-like)
 
 ```vb
-async define background_work needing server_url:
-    fetch server_url into html.
-    say "background job running".
-    give html.
+title = the result of running browser.open with "https://example.com", "true".
+say "page title: ", title.
+
+heading = the result of running browser.read with "h1".
+say "h1 text: ", heading.
+
+run browser.screenshot with "example_screenshot.png".
+
+result = the result of running browser.eval with "document.querySelectorAll('a').length".
+say "number of links: ", result.
+
+run browser.close.
+say "browser closed.".
+```
+
+Run with:
+```bash
+pip install playwright
+python -m playwright install chromium
+python -m verba examples/use_browser.vrb
+```
+
+---
+
+### 15. use_express.vrb — Express-like Router
+
+```vb
+run express.use with "examples/webapp", "/static".
+
+define handle_home:
+    respond with "<h1>Welcome!</h1>" status 200 type "text/html".
 end.
 
-task = async run background_work with "https://example.com".
-say "Doing something else on the main thread!".
-await result = task.
-say "Async finished! Result: ", result.
+define handle_user:
+    id = request.param_id.
+    body = join '{"id":"', id, '"}'.
+    respond with body status 200 type "application/json".
+end.
+
+define handle_echo:
+    out = the result of running express.json_build with "echo", request.body.
+    respond with out status 200 type "application/json".
+end.
+
+define handle_404:
+    respond with "Not Found" status 404 type "text/plain".
+end.
+
+run express.get with "/", "handle_home".
+run express.get with "/users/:id", "handle_user".
+run express.post with "/echo", "handle_echo".
+run express.get with "*", "handle_404".
+
+run express.listen with "5000".
 ```
 
-### 6. Pointers
-
-```vb
-x = 10.
-ptr = &x.
-say deref ptr.        /- prints 10
-deref ptr = 99.       /- x is now 99
-say x.                /- prints 99
-
-y = 5.
-ptr = &y.
-deref ptr = 0.
-say y.                /- prints 0
-
-ptr = null.
-if ptr is null:
-    say "no target.".
-end.
+Run with:
+```bash
+python -m verba examples/use_express.vrb
 ```
 
 ---
@@ -581,4 +960,6 @@ end.
 ## Notes
 
 - Every root-level statement must end with `.` or `:`.
+- Use single-quoted strings `'...'` when your value contains double quotes (e.g. JSON literals).
 - When Verba cannot understand a line, it throws a plain-English error pointing at the exact line and column.
+- Stop any running server with `Ctrl+C`.

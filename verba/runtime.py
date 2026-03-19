@@ -41,9 +41,67 @@ class Instance:
         self.cls = cls
         self.props = {}
 
+
+@dataclass
+class NativeFunction:
+    """A Python callable exposed as a Verba function."""
+    name: str
+    params: list[str]
+    fn: object          # callable
+    needs_interp: bool = False
+
+
+class NativeInstance:
+    """
+    An object whose methods are NativeFunctions.
+    Exposed in Verba as a variable (e.g. `http`, `browser`, `express`).
+    """
+    def __init__(self, name: str, methods: dict[str, NativeFunction]):
+        self.name    = name
+        self.methods = methods
+        self.cls     = None
+        self.props: dict[str, Any] = {}
+
+
 class _ReturnSignal(Exception):
     def __init__(self, value: Any):
         self.value = value
+
+
+class _RespondSignal(Exception):
+    """Raised by ServeRespond to unwind back to the HTTP handler."""
+    def __init__(self, body: str, status: int, mime: str):
+        self.body   = body
+        self.status = status
+        self.mime   = mime
+
+
+class _RedirectSignal(Exception):
+    """Raised by ServeRedirect to issue an HTTP redirect."""
+    def __init__(self, url: str, status: int):
+        self.url    = url
+        self.status = status
+
+
+class _VerbaRequest:
+    """Injected as `request` inside every route handler block."""
+    def __init__(self, method: str, path: str, query: dict, form: dict,
+                 raw_body: str, headers: dict):
+        self._query = query
+        self._form  = form
+        self._headers = headers
+        # Expose as Instance-compatible so request.method etc. work via ObjectPropGet
+        self.cls   = None
+        self.props = {
+            "method": method,
+            "path":   path,
+            "body":   raw_body,
+        }
+        # Also pre-populate query and form keys directly
+        for k, v in query.items():
+            self.props[f"query_{k}"] = v[0] if v else ""
+        for k, v in form.items():
+            self.props[f"form_{k}"] = v[0] if v else ""
 
 
 class Environment:
@@ -84,6 +142,24 @@ class Interpreter:
         self.globals = Environment()
         self.functions: dict[str, Function] = {}
         self.classes: dict[str, ClassObj] = {}
+        self._http_routes: dict[tuple[str, str], tuple] = {}
+        self._inject_stdlib()
+
+    # ── stdlib injection ──────────────────────────────────────────────────────
+
+    def _inject_stdlib(self) -> None:
+        from verba.stdlib import http as _http_mod
+        from verba.stdlib import browser as _browser_mod
+        from verba.stdlib import express as _express_mod
+        for mod_name, mod in [("http", _http_mod), ("browser", _browser_mod), ("express", _express_mod)]:
+            needs_interp: set = getattr(mod, "NEEDS_INTERP", set())
+            methods = {}
+            for fn_name, (fn, params) in mod.FUNCTIONS.items():
+                methods[fn_name] = NativeFunction(
+                    name=fn_name, params=params, fn=fn,
+                    needs_interp=(fn_name in needs_interp),
+                )
+            self.globals.set(mod_name, NativeInstance(mod_name, methods))
 
     def run(self, program: list[ast.Stmt]) -> Any:
         return self._exec_block(program, env=self.globals)
@@ -363,14 +439,21 @@ class Interpreter:
             return
 
         if isinstance(s, ast.MethodCall):
-            obj = env.get(s.obj_name)
+            obj = env.get(s.obj_name) if env.contains(s.obj_name) else None
+            if isinstance(obj, NativeInstance):
+                self._call_native_method(obj, s.method, s.args, caller_env=env, line_no=ln)
+                return
             if not isinstance(obj, Instance):
                 raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln, col=col, line=raw)
             self._call_method(obj, s.method, s.args, caller_env=env, line_no=ln)
             return
 
         if isinstance(s, ast.LetResultOfMethod):
-            obj = env.get(s.obj_name)
+            obj = env.get(s.obj_name) if env.contains(s.obj_name) else None
+            if isinstance(obj, NativeInstance):
+                val = self._call_native_method(obj, s.method, s.args, caller_env=env, line_no=ln)
+                env.set(s.target_name, val)
+                return
             if not isinstance(obj, Instance):
                 raise VerbaRuntimeError(f"Variable {s.obj_name} is not an object.", line_no=ln, col=col, line=raw)
             val = self._call_method(obj, s.method, s.args, caller_env=env, line_no=ln)
@@ -417,12 +500,106 @@ class Interpreter:
             env.set(s.target_name, task["result"])
             return
 
+        if isinstance(s, ast.ServeRoute):
+            path   = self._to_word(self._eval_expr(s.path,   env=env, context="general"))
+            method = self._to_word(self._eval_expr(s.method, env=env, context="general")).upper()
+            self._http_routes[(method, path)] = (s.body, env)
+            return
+
+        if isinstance(s, ast.ServeStart):
+            import http.server, threading
+            port = int(self._to_number(self._eval_expr(s.port, env=env, context="general"), ln))
+            interp = self
+
+            class _VerbaHandler(http.server.BaseHTTPRequestHandler):
+                def log_message(self, *_): pass
+
+                def _dispatch(self, method: str):
+                    import urllib.parse
+                    parsed   = urllib.parse.urlparse(self.path)
+                    path     = parsed.path
+                    qs       = urllib.parse.parse_qs(parsed.query)
+                    length   = int(self.headers.get("Content-Length", 0))
+                    raw_body = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
+                    form     = urllib.parse.parse_qs(raw_body)
+
+                    # Build the request object visible to Verba code as `request`
+                    req_obj = _VerbaRequest(method, path, qs, form, raw_body,
+                                            dict(self.headers))
+
+                    key = (method, path)
+                    if key not in interp._http_routes:
+                        key = (method, "*")  # wildcard fallback
+                    if key not in interp._http_routes:
+                        self._raw_respond(404, "text/plain", "404 Not Found")
+                        return
+
+                    body_stmts, route_env = interp._http_routes[key]
+                    handler_env = Environment(parent=route_env)
+                    handler_env.set("request", req_obj)
+
+                    interp._http_response = None
+                    try:
+                        interp._exec_block(body_stmts, env=handler_env)
+                    except _RespondSignal as r:
+                        self._raw_respond(r.status, r.mime, r.body)
+                        return
+                    except _RedirectSignal as r:
+                        self.send_response(r.status)
+                        self.send_header("Location", r.url)
+                        self.send_header("Content-Length", "0")
+                        self.end_headers()
+                        return
+                    # If no respond statement was hit, send empty 200
+                    self._raw_respond(200, "text/html", "")
+
+                def _raw_respond(self, status: int, mime: str, body: str):
+                    data = body.encode("utf-8")
+                    self.send_response(status)
+                    self.send_header("Content-Type", mime)
+                    self.send_header("Content-Length", len(data))
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(data)
+
+                def do_GET(self):    self._dispatch("GET")
+                def do_POST(self):   self._dispatch("POST")
+                def do_PUT(self):    self._dispatch("PUT")
+                def do_DELETE(self): self._dispatch("DELETE")
+
+            server = http.server.HTTPServer(("", port), _VerbaHandler)
+            print(f"Verba HTTP server listening on http://localhost:{port}")
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            # Block the main thread so the script keeps running
+            try:
+                import time
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                server.shutdown()
+            return
+
+        if isinstance(s, ast.ServeRedirect):
+            url    = self._to_word(self._eval_expr(s.url,    env=env, context="general"))
+            status = int(self._to_number(self._eval_expr(s.status, env=env, context="general"), ln))
+            raise _RedirectSignal(url, status)
+
+        if isinstance(s, ast.ServeRespond):
+            parts  = [self._to_word(self._eval_expr(p, env=env, context="say")) for p in s.parts]
+            body   = "".join(parts)
+            status = int(self._to_number(self._eval_expr(s.status, env=env, context="general"), ln))
+            mime   = self._to_word(self._eval_expr(s.mime,   env=env, context="general"))
+            raise _RespondSignal(body, status, mime)
+
         raise VerbaRuntimeError("I reached a statement I cannot execute yet.", line_no=ln)
 
     def _eval_expr(self, e: ast.Expr, *, env: Environment, context: str) -> Any:
         ln = e.span.line_no
         col = e.span.col
         raw = e.span.line_content
+
+        if isinstance(e, ast.StringConcat):
+            return "".join(self._to_word(self._eval_expr(p, env=env, context="say")) for p in e.parts)
 
         if isinstance(e, ast.Ref):
             if not env.contains(e.name):
@@ -450,8 +627,10 @@ class Interpreter:
             if e.obj_name == "self":
                 obj = env.get("self")
             else:
-                obj = env.get(e.obj_name)
-            if not isinstance(obj, Instance):
+                obj = env.get(e.obj_name) if env.contains(e.obj_name) else None
+            if isinstance(obj, NativeInstance):
+                return obj.props.get(e.prop)
+            if not isinstance(obj, (Instance, _VerbaRequest)):
                 raise VerbaRuntimeError(f"Variable {e.obj_name} is not an object.", line_no=ln)
             if e.prop in obj.props:
                 return obj.props[e.prop]
@@ -544,6 +723,34 @@ class Interpreter:
         except _ReturnSignal as r:
             return r.value
         return None
+
+    def _call_native_method(self, obj: NativeInstance, method_name: str, args: list[ast.Expr], *, caller_env: Environment, line_no: int) -> Any:
+        if method_name not in obj.methods:
+            raise VerbaRuntimeError(f"Module '{obj.name}' has no function called '{method_name}'.", line_no=line_no)
+        nf = obj.methods[method_name]
+        # Evaluate provided args; pad missing optional args with empty string
+        evaled = [self._to_word(self._eval_expr(a, env=caller_env, context="general")) for a in args]
+        # Build positional call, injecting interpreter where needed
+        call_args: list[Any] = []
+        arg_i = 0
+        for p in nf.params:
+            if p == "__interp__":
+                call_args.append(self)
+            elif arg_i < len(evaled):
+                call_args.append(evaled[arg_i])
+                arg_i += 1
+            else:
+                call_args.append("")
+        try:
+            result = nf.fn(*call_args)
+        except Exception as e:
+            raise VerbaRuntimeError(str(e), line_no=line_no)
+        # Wrap dict results as a NativeInstance so .prop access works
+        if isinstance(result, dict):
+            ni = NativeInstance(method_name, {})
+            ni.props = {k: (str(v) if not isinstance(v, str) else v) for k, v in result.items()}
+            return ni
+        return result if result is not None else ""
 
     def _call_method(self, obj: Instance, method_name: str, args: list[ast.Expr], *, caller_env: Environment, line_no: int) -> Any:
         if method_name not in obj.cls.methods:

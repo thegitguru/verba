@@ -1,0 +1,6 @@
+try:
+    save "" to file called "todos.txt".
+    say "All todos cleared.".
+on error saving to msg:
+    say "Error: ", msg.
+end.

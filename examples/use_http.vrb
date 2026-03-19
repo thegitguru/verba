@@ -1,0 +1,34 @@
+note use_http.vrb — axios-like HTTP client demo
+note Run: python -m verba examples/use_http.vrb
+
+note --- GET request ---
+res = the result of running http.get with "https://httpbin.org/get".
+say "status: ", res.status.
+say "ok:     ", res.ok.
+say "body (first 120 chars):".
+note body is a long string so we just say it
+say res.body.
+
+note --- POST form data ---
+form = the result of running http.encode_form with '{"name":"Verba","lang":"vrb"}'.
+res2 = the result of running http.post with "https://httpbin.org/post", form.
+say "POST status: ", res2.status.
+
+note --- POST JSON ---
+res3 = the result of running http.post_json with "https://httpbin.org/post", '{"hello":"world"}'.
+say "POST JSON status: ", res3.status.
+
+note --- URL with query params ---
+url = the result of running http.encode_url with "https://httpbin.org/get", '{"q":"verba","page":"1"}'.
+say "encoded url: ", url.
+res4 = the result of running http.get with url.
+say "GET with params status: ", res4.status.
+
+note --- error handling ---
+try:
+    bad = the result of running http.get with "https://httpbin.org/status/404".
+    say "404 status: ", bad.status.
+    say "404 ok: ", bad.ok.
+on error saving to err:
+    say "request error: ", err.
+end.
