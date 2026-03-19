@@ -1,6 +1,6 @@
 note mathkit.vrb — Verbix package: math utilities
-note Version: 2.0.0
-note Changelog: added factorial, is_even, is_odd, sum_list
+note Version: 1.0.0
+note Fetch via: verba verbix install http://localhost:8900/mathkit.vrb
 
 define add needing a, b:
     give a + b.
@@ -48,35 +48,4 @@ define average needing numbers:
     give total / count.
 end.
 
-note --- new in 2.0.0 ---
-
-define factorial needing n:
-    if n <= 1:
-        give 1.
-    end.
-    give n * (the result of running factorial with n - 1).
-end.
-
-define is_even needing n:
-    if n % 2 == 0:
-        give "true".
-    end.
-    give "false".
-end.
-
-define is_odd needing n:
-    if n % 2 != 0:
-        give "true".
-    end.
-    give "false".
-end.
-
-define sum_list needing numbers:
-    total = 0.
-    for n in numbers:
-        total += n.
-    end.
-    give total.
-end.
-
-say "mathkit 2.0.0 loaded.".
+say "mathkit 1.0.0 loaded.".

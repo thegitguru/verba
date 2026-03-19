@@ -1,14 +1,25 @@
 {
   "packages": {
     "mathkit": {
-      "url": "http://localhost:8900/mathkit.vrb",
-      "version": "1.0.0",
-      "description": "Math utility functions: add, subtract, multiply, divide, power, clamp, average"
+      "latest": "2.0.0",
+      "description": "Math utility functions: add, subtract, multiply, divide, power, clamp, average",
+      "versions": {
+        "1.0.0": {
+          "url": "http://localhost:8900/mathkit-1.0.0.vrb"
+        },
+        "2.0.0": {
+          "url": "http://localhost:8900/mathkit-2.0.0.vrb"
+        }
+      }
     },
     "verbix_utils": {
-      "url": "http://localhost:8900/verbix_utils.vrb",
-      "version": "1.0.0",
-      "description": "HTTP response helpers: format_response, is_success, build_auth_header, truncate"
+      "latest": "1.0.0",
+      "description": "HTTP response helpers: format_response, is_success, build_auth_header, truncate",
+      "versions": {
+        "1.0.0": {
+          "url": "http://localhost:8900/verbix_utils.vrb"
+        }
+      }
     }
   }
 }
