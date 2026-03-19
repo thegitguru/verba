@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Verba Contributors" }]
+dependencies = []
 
 [project.scripts]
 verba = "verba.cli:main"

@@ -61,6 +61,8 @@ counter = 1.
 name = "Alice".
 counter += 1.
 counter -= 2.
+counter *= 3.
+counter /= 2.
 ```
 
 ---
@@ -73,7 +75,7 @@ say.
 display item.
 ```
 
-> Spacing is controlled entirely by your string literals.
+> `say` adds a newline; `display` does not.
 
 ---
 
@@ -94,6 +96,8 @@ r = 10 % 3.
 ```
 
 Operators: `+`, `-`, `*`, `/`, `%`
+
+Unary minus is supported: `neg = -5.`
 
 ---
 
@@ -120,9 +124,39 @@ else:
 end.
 ```
 
+**else if** chaining:
+
+```vb
+if score >= 90:
+    say "A".
+else if score >= 80:
+    say "B".
+else:
+    say "C".
+end.
+```
+
 Comparisons: `==`, `!=`, `>`, `<`, `>=`, `<=`, `is null`, `is not null`
 
 Boolean operators: `and`, `or`, `not`
+
+---
+
+### Match
+
+```vb
+match day:
+    when "Mon":
+        say "Monday".
+    end.
+    when "Fri":
+        say "Friday".
+    end.
+    else:
+        say "another day".
+    end.
+end.
+```
 
 ---
 
@@ -130,8 +164,15 @@ Boolean operators: `and`, `or`, `not`
 
 **Repeat a fixed number of times:**
 ```vb
-repeat 2 times:
+repeat 5 times:
     say "again".
+end.
+```
+
+**Repeat with an index variable:**
+```vb
+repeat 5 times with i:
+    say "step ", i.
 end.
 ```
 
@@ -150,6 +191,19 @@ for item in colors:
 end.
 ```
 
+**For-each with index:**
+```vb
+for item at i in colors:
+    say i, ": ", item.
+end.
+```
+
+**Loop control:**
+```vb
+stop.   /- break out of the loop
+skip.   /- continue to the next iteration
+```
+
 ---
 
 ### Lists
@@ -163,6 +217,11 @@ remove green from colors.
 1-based indexing:
 ```vb
 first_color = item 1 of colors.
+```
+
+Length:
+```vb
+n = length of colors.
 ```
 
 ---
@@ -189,6 +248,16 @@ end.
 total = the result of running add_two_numbers with 2, 3.
 ```
 
+**Default parameter values:**
+```vb
+define greet needing name, greeting = "Hello":
+    say greeting, ", ", name.
+end.
+
+run greet with "Alice".
+run greet with "Bob", "Hi".
+```
+
 ---
 
 ### Try / Catch
@@ -213,6 +282,14 @@ end.
 
 ---
 
+### Assert
+
+```vb
+assert x > 0 saying "x must be positive".
+```
+
+---
+
 ### Imports
 
 ```vb
@@ -230,13 +307,11 @@ say deref ptr.        /- prints 10
 deref ptr = 99.       /- x is now 99
 say x.                /- prints 99
 
-/- re-seat at a different variable
 y = 5.
 ptr = &y.
 deref ptr = 0.
 say y.                /- prints 0
 
-/- null safety
 ptr = null.
 if ptr is null:
     say "no target.".
@@ -311,29 +386,7 @@ say "Async finished! Result: ", result.
 
 ---
 
-### 5. Pointers
-
-```vb
-x = 10.
-ptr = &x.
-say deref ptr.        /- prints 10
-deref ptr = 99.       /- x is now 99
-say x.                /- prints 99
-
-y = 5.
-ptr = &y.
-deref ptr = 0.
-say y.                /- prints 0
-
-ptr = null.
-if ptr is null:
-    say "no target.".
-end.
-```
-
----
-
-### 6. Built-in HTTP Server
+### 5. Built-in HTTP Server
 
 Define routes with `on route`, respond with `respond with`, redirect with `redirect to`, then start with `serve on port`.
 
@@ -378,18 +431,13 @@ serve on port 5000.
 respond with "<b>", name, "</b>" status 200 type "text/html".
 ```
 
-Stop the server with `Ctrl+C`. To force-kill:
-
-```bash
-netstat -ano | findstr :5000
-taskkill /PID <pid> /F
-```
+Stop the server with `Ctrl+C`.
 
 ---
 
 ## Standard Library Modules
 
-Three modules are available in every Verba program without any import — `http`, `browser`, and `express`.
+Five modules are available in every Verba program without any import — `http`, `browser`, `express`, `strings`, and `math`.
 
 ---
 
@@ -422,14 +470,6 @@ res = the result of running http.post_json with "https://httpbin.org/post", '{"h
 say "status: ", res.status.
 ```
 
-**Example — URL with query params:**
-
-```vb
-url = the result of running http.encode_url with "https://api.example.com/search", '{"q":"verba","page":"1"}'.
-res = the result of running http.get with url.
-say res.body.
-```
-
 **Example — error handling:**
 
 ```vb
@@ -446,14 +486,61 @@ end.
 
 ---
 
-### `browser` — Puppeteer-like Browser Automation
+### `strings` — String Utilities
 
-Requires Playwright:
+| Function | Description |
+|---|---|
+| `strings.length with s` | Length of string |
+| `strings.upper with s` | Uppercase |
+| `strings.lower with s` | Lowercase |
+| `strings.trim with s` | Strip whitespace |
+| `strings.contains with s, sub` | Returns `"true"` or `"false"` |
+| `strings.starts_with with s, prefix` | Returns `"true"` or `"false"` |
+| `strings.ends_with with s, suffix` | Returns `"true"` or `"false"` |
+| `strings.replace with s, old, new` | Replace all occurrences |
+| `strings.split with s, sep` | Split into a list |
+| `strings.index_of with s, sub` | First index of substring (`-1` if not found) |
+| `strings.slice with s, start, end` | Substring by index |
+| `strings.to_number with s` | Parse string to number |
+| `strings.repeat with s, times` | Repeat string N times |
 
-```bash
-pip install playwright
-python -m playwright install chromium
+```vb
+up = the result of running strings.upper with "hello".
+say up.   /- HELLO
 ```
+
+---
+
+### `math` — Math Functions
+
+| Function | Description |
+|---|---|
+| `math.floor with n` | Floor |
+| `math.ceil with n` | Ceiling |
+| `math.round with n, digits` | Round to N decimal places |
+| `math.abs with n` | Absolute value |
+| `math.sqrt with n` | Square root |
+| `math.power with base, exp` | Exponentiation |
+| `math.log with n, base` | Logarithm (natural if base omitted) |
+| `math.sin with n` | Sine |
+| `math.cos with n` | Cosine |
+| `math.tan with n` | Tangent |
+| `math.random` | Random float 0–1 |
+| `math.random_int with low, high` | Random integer in range |
+| `math.min with a, b` | Minimum |
+| `math.max with a, b` | Maximum |
+| `math.pi` | π |
+
+```vb
+r = the result of running math.random_int with 1, 100.
+say "random: ", r.
+```
+
+---
+
+### `browser` — HTTP Browser Module
+
+No dependencies required — uses Python's built-in `urllib` and `html.parser`.
 
 ```vb
 title = the result of running browser.open with "https://example.com", "true".
@@ -462,37 +549,25 @@ say "title: ", title.
 heading = the result of running browser.read with "h1".
 say "h1: ", heading.
 
-run browser.screenshot with "shot.png".
+current_url = the result of running browser.url.
+say "url: ", current_url.
+
 run browser.close.
 ```
 
 | Function | Description |
 |---|---|
-| `browser.open with url, headless` | Open browser and navigate (`"true"`/`"false"`) |
+| `browser.open with url, headless` | Fetch a URL and load the page |
 | `browser.goto with url` | Navigate to a new URL |
-| `browser.click with selector` | Click an element |
-| `browser.type with selector, text` | Fill an input field |
-| `browser.read with selector` | Get inner text of an element |
-| `browser.read_html with selector` | Get inner HTML of an element |
-| `browser.screenshot with path` | Save a screenshot |
+| `browser.read with selector` | Get inner text of a tag (e.g. `"h1"`, `"p"`) |
+| `browser.read_html with selector` | Get inner HTML of a tag |
 | `browser.wait with ms` | Wait for a number of milliseconds |
-| `browser.wait_for with selector` | Wait until an element appears |
+| `browser.wait_for with selector` | Check element exists in loaded page |
 | `browser.title` | Get the current page title |
 | `browser.url` | Get the current page URL |
-| `browser.eval with js` | Evaluate a JavaScript expression |
-| `browser.close` | Close the browser |
+| `browser.close` | Clear the loaded page |
 
-**Example — form automation:**
-
-```vb
-run browser.open with "https://example.com/login", "false".
-run browser.type with "#username", "alice".
-run browser.type with "#password", "secret".
-run browser.click with "button[type=submit]".
-run browser.wait_for with ".dashboard".
-run browser.screenshot with "dashboard.png".
-run browser.close.
-```
+> `browser.click`, `browser.type`, `browser.screenshot`, and `browser.eval` require Playwright (`pip install playwright && python -m playwright install chromium`) and will raise an error if called without it.
 
 ---
 
@@ -807,12 +882,6 @@ val = 5.
 vptr = &val.
 run double_it with vptr.
 say "after double_it, val = ", val.
-
-z = 10.
-q = &z.
-say "q via &z, value: ", deref q.
-deref q = 20.
-say "after deref q = 20, z = ", z.
 ```
 
 ---
@@ -865,7 +934,7 @@ python -m verba examples/http_server.vrb
 
 ---
 
-### 13. use_http.vrb — HTTP Client (axios-like)
+### 13. use_http.vrb — HTTP Client
 
 ```vb
 res = the result of running http.get with "https://httpbin.org/get".
@@ -884,14 +953,9 @@ res4 = the result of running http.get with url.
 say "GET with params status: ", res4.status.
 ```
 
-Run with:
-```bash
-python -m verba examples/use_http.vrb
-```
-
 ---
 
-### 14. use_browser.vrb — Browser Automation (puppeteer-like)
+### 14. use_browser.vrb — Browser / HTTP Fetch
 
 ```vb
 title = the result of running browser.open with "https://example.com", "true".
@@ -900,10 +964,8 @@ say "page title: ", title.
 heading = the result of running browser.read with "h1".
 say "h1 text: ", heading.
 
-run browser.screenshot with "example_screenshot.png".
-
-result = the result of running browser.eval with "document.querySelectorAll('a').length".
-say "number of links: ", result.
+current_url = the result of running browser.url.
+say "url: ", current_url.
 
 run browser.close.
 say "browser closed.".
@@ -911,8 +973,6 @@ say "browser closed.".
 
 Run with:
 ```bash
-pip install playwright
-python -m playwright install chromium
 python -m verba examples/use_browser.vrb
 ```
 
@@ -950,10 +1010,17 @@ run express.get with "*", "handle_404".
 run express.listen with "5000".
 ```
 
-Run with:
+---
+
+### 16. webapp/server.vrb — Full Web App (pure Verba backend)
+
+A complete web application written entirely in Verba — no Python glue code needed.
+
 ```bash
-python -m verba examples/use_express.vrb
+python -m verba examples/webapp/server.vrb
 ```
+
+Then open `http://localhost:5000`. Features a calculator and a persistent counter, all served from Verba route handlers.
 
 ---
 
