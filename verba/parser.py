@@ -31,6 +31,8 @@ from .ast import (
     ListItemGet,
     ListLiteral,
     ListRemove,
+    ListSlice,
+    ListSort,
     ListComprehension,
     MapLiteral,
     MapComprehension,
