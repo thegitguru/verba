@@ -2,7 +2,7 @@ verba/__pycache__/
 verba/stdlib/__pycache__/
 out.txt
 run_examples.txt
-
+verba-packages/
 # webapp runtime data
 examples/webapp/todos.txt
 examples/webapp/notes.txt

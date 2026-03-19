@@ -880,8 +880,8 @@ say "10 + 5 = ", result.
       "latest": "2.0.0",
       "description": "Math utility functions",
       "versions": {
-        "1.0.0": { "url": "http://localhost:8900/mathkit-1.0.0.vrb" },
-        "2.0.0": { "url": "http://localhost:8900/mathkit-2.0.0.vrb" }
+        "1.0.0": { "url": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/verba-packages/main/packages/mathkit/mathkit-1.0.0.vrb" },
+        "2.0.0": { "url": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/verba-packages/main/packages/mathkit/mathkit-2.0.0.vrb" }
       }
     }
   }
@@ -891,7 +891,7 @@ say "10 + 5 = ", result.
 The registry URL is configured in `verbix.config.json`:
 
 ```json
-{ "registry": "http://localhost:8900/index.json" }
+{ "registry": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/verba-packages/main/index.json" }
 ```
 
 ### Building `verbix.exe`

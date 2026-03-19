@@ -41,6 +41,7 @@ class Interpreter:
         from verba.stdlib import xml as _xml_mod
         from verba.stdlib import gui as _gui_mod
         from verba.stdlib import pkg as _pkg_mod
+        from verba.stdlib import data as _data_mod
         for mod_name, mod in [
             ("http",    _http_mod),
             ("browser", _browser_mod),
@@ -61,6 +62,7 @@ class Interpreter:
             ("xml",     _xml_mod),
             ("gui",     _gui_mod),
             ("verbix",  _pkg_mod),
+            ("data",    _data_mod),
         ]:
             needs_interp: set = getattr(mod, "NEEDS_INTERP", set())
             methods = {}
