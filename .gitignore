@@ -1,3 +1,14 @@
 verba/__pycache__/
+verba/stdlib/__pycache__/
 out.txt
 run_examples.txt
+build.bat
+verba_main.py
+verba.spec
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.pyc
