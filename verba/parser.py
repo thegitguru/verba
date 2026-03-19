@@ -698,10 +698,15 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
     span = _make_span(lt, original_tokens)
     first_val_orig = original_tokens[0].value.lower()
 
-    # Comments / notes (don't require period)
+    # Comments / notes (don't require period, but handle them if present)
     if first_val_orig == "note":
         cur.i += 1
-        return Note(span, " ".join([t.value for t in original_tokens[1:]]))
+        content = " ".join([t.value for t in original_tokens[1:]]).strip()
+        if content.endswith("."):
+            content = content[:-1].strip()
+        if (content.startswith('"') and content.endswith('"')) or (content.startswith("'") and content.endswith("'")):
+            content = content[1:-1]
+        return Note(span, content)
 
     # Every other statement must have a terminator (. or :)
     _require_period(lt, line_no)

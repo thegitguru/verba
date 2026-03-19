@@ -151,16 +151,16 @@ class Interpreter:
                 return
             
             # 1. Check functions
-            if topic in self.functions:
-                f = self.functions[topic]
+            f = env.get_function(topic)
+            if f:
                 print(f"--- HELP: {f.name} ---")
                 print(f"Usage: run {f.name} with {', '.join(f.params)}.")
                 if f.doc: print(f"Documentation: {f.doc}")
                 return
             
             # 2. Check classes
-            if topic in self.classes:
-                c = self.classes[topic]
+            c = env.get_class(topic)
+            if c:
                 print(f"--- HELP: class {c.name} ---")
                 if c.parent: print(f"Extends: {c.parent.name}")
                 print(f"Methods: {', '.join(c.methods.keys())}")
@@ -463,7 +463,7 @@ class Interpreter:
             body_stmts = []
             for stmt in s.body:
                 if isinstance(stmt, ast.Note) and doc is None:
-                    doc = stmt.text
+                    doc = stmt.value
                 else:
                     body_stmts.append(stmt)
 
