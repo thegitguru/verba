@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not raw:
         print("Verbix — Verba Package Manager")
-        print("  verbix install <name|url>   Install a package by name or URL")
+        print("  verbix install <name>/<url> Install a package by name or URL")
         print("  verbix uninstall <name>     Uninstall a package")
         print("  verbix packages             List installed packages")
         print("  verbix search <query>       Search the registry")

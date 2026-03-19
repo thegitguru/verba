@@ -145,10 +145,10 @@ def _verbix_main(args: list[str]) -> int:
     """Handles: verba verbix <install|uninstall|packages|info> [arg]"""
     usage = (
         "Verbix — Verba Package Manager\n"
-        "  verba verbix install <url>      Install a package\n"
-        "  verba verbix uninstall <name>   Uninstall a package\n"
-        "  verba verbix packages           List installed packages\n"
-        "  verba verbix info <name>        Show package info\n"
+        "  verba verbix install <name>/<url> Install a package\n"
+        "  verba verbix uninstall <name>     Uninstall a package\n"
+        "  verba verbix packages             List installed packages\n"
+        "  verba verbix info <name>          Show package info\n"
     )
     if not args:
         print(usage)
