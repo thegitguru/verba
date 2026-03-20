@@ -140,6 +140,45 @@ def install_pkg(package: str) -> int:
         return 1
 
 
+def remove_pkg(package: str) -> int:
+    import json
+    
+    # Derive name matching what `install_pkg` does
+    name = package
+    if not name.endswith(".vrb"):
+        name += ".vrb"
+        
+    modules_dir = Path("modules")
+    pkg_path = modules_dir / name
+    
+    if pkg_path.exists():
+        try:
+            pkg_path.unlink()
+            print(f"Removed {pkg_path}")
+        except OSError as e:
+            print(f"Failed to remove {pkg_path}: {e}")
+            return 1
+    else:
+        print(f"Package '{package}' is not installed in modules/ directory.")
+        
+    vjson_path = Path("verba.json")
+    if vjson_path.exists():
+        try:
+            with open(vjson_path, "r", encoding="utf-8") as f:
+                project_data = json.load(f)
+                
+            pkg_key = name[:-4]
+            if "dependencies" in project_data and pkg_key in project_data["dependencies"]:
+                del project_data["dependencies"][pkg_key]
+                with open(vjson_path, "w", encoding="utf-8") as f:
+                    json.dump(project_data, f, indent=2)
+                print(f"Removed dependency '{pkg_key}' from verba.json")
+        except Exception as e:
+            print(f"Warning: Could not update verba.json: {e}")
+            
+    return 0
+
+
 def format_file(path: Path) -> int:
     try:
         source = path.read_text(encoding="utf-8")
@@ -221,6 +260,10 @@ def main(argv: list[str] | None = None) -> int:
     init_p = sub.add_parser("init", help="Initialize a new Verba project.")
     init_p.add_argument("name", help="Name of the project directory.")
 
+    # remove
+    rm_p = sub.add_parser("remove", help="Remove an installed package.")
+    rm_p.add_argument("package", help="Name of the package to remove.")
+
     # original/legacy args (for backward compatibility if possible)
     p.add_argument("legacy_file", nargs="?", help="Legacy file argument.")
     p.add_argument("--repl",    action="store_true", help="Start an interactive REPL.")
@@ -243,6 +286,8 @@ def main(argv: list[str] | None = None) -> int:
             return check_file(Path(ns.file))
         if ns.command == "repl":
             return repl()
+        if ns.command == "remove":
+            return remove_pkg(ns.package)
         if ns.command == "init":
             return init_project(ns.name)
         if ns.command == "run":
