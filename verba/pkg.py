@@ -37,7 +37,7 @@ class Spinner:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.running = False
-        if self.thread:
+        if self.thread and self.thread.is_alive():
             self.thread.join()
 
 
@@ -69,15 +69,16 @@ def compute_sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 def download_package(name: str, url: str, expected_hash: str = "") -> tuple[bool, str]:
+    pkg_filename = name
     if not name.endswith(".vrb"):
-        name += ".vrb"
+        pkg_filename += ".vrb"
         
     global_cache_dir = Path.home() / ".verba" / "cache"
     global_cache_dir.mkdir(parents=True, exist_ok=True)
     
     # We use a primitive cache key based on the URL hash
     cache_key = hashlib.md5(url.encode()).hexdigest()
-    cache_path = global_cache_dir / f"{name}_{cache_key}.vrb"
+    cache_path = global_cache_dir / f"{pkg_filename}_{cache_key}.vrb"
     
     content = None
     if cache_path.exists():
@@ -87,12 +88,11 @@ def download_package(name: str, url: str, expected_hash: str = "") -> tuple[bool
             # Hash mismatch in cache, force refetch
             content = None
         else:
-            print(f"Loaded {name} from global cache.")
+            print(f"Loaded {pkg_filename} from global cache.")
 
     success = False
     err_msg = ""
     # Local dev override for package downloads (redirect to local disk if path exists)
-    # This is critical for testing packages before pushing to GitHub
     if content is None and "raw.githubusercontent.com/thegitguru/Verba/main/" in url:
         relative_path = url.split("raw.githubusercontent.com/thegitguru/Verba/main/")[1]
         local_dev_path = Path(r"d:\GitHub\Verba") / relative_path.replace("/", os.sep)
@@ -101,7 +101,7 @@ def download_package(name: str, url: str, expected_hash: str = "") -> tuple[bool
             print(f"🛠️  Developer Override: Using local file {local_dev_path}")
 
     if content is None:
-        with Spinner(f"Installing {name} from {url}..."):
+        with Spinner(f"Installing {pkg_filename} from {url}..."):
             try:
                 req = urllib.request.Request(url, headers={'User-Agent': 'Verba'})
                 with urllib.request.urlopen(req) as response:
@@ -123,9 +123,9 @@ def download_package(name: str, url: str, expected_hash: str = "") -> tuple[bool
     if success and content is not None:
         modules_dir = Path("modules")
         modules_dir.mkdir(exist_ok=True)
-        (modules_dir / name).write_bytes(content)
+        (modules_dir / pkg_filename).write_bytes(content)
         actual_hash = compute_sha256(content)
-        print(f"Successfully installed to {modules_dir / name} (sha256: {actual_hash[:8]})")
+        print(f"Successfully installed to {modules_dir / pkg_filename} (sha256: {actual_hash[:8]})")
         return True, actual_hash
     else:
         print(f"I failed to install the package: {err_msg}")
@@ -166,6 +166,9 @@ def _update_verba_json(pkg_key: str, url: str, version: str = "unknown", package
         except Exception:
             pass
             
+    if "dependencies" not in lock_data:
+        lock_data["dependencies"] = {}
+        
     lock_data["dependencies"][pkg_key] = {
         "version": version,
         "url": url,
@@ -230,39 +233,58 @@ def install(package: str | None = None) -> int:
         parsed = urlparse(url)
         name = Path(parsed.path).name
         if not name:
-            print(f"Error: Could not determine package name for URL: {url}")
+            print(f"Error: Could determine package name for URL: {url}")
             return 1
     else:
-        registry = fetch_registry()
-        if not registry:
+        full_registry = fetch_registry()
+        if not full_registry:
             return 1
             
+        registry = full_registry.get("packages", {})
         if package not in registry:
             print(f"Error: Package '{package}' not found in registry.")
             return 1
             
         registry_entry = registry[package]
         expected_hash = ""
+        url = ""
+        version = "unknown"
+
         if isinstance(registry_entry, dict):
-            if req_version and "versions" in registry_entry and req_version in registry_entry["versions"]:
-                ver_entry = registry_entry["versions"][req_version]
+            # Resolve requested or latest version
+            target_version = req_version if req_version else registry_entry.get("latest", "unknown")
+            versions = registry_entry.get("versions", {})
+            
+            if target_version in versions:
+                ver_entry = versions[target_version]
                 if isinstance(ver_entry, dict):
                     url = str(ver_entry.get("url", ""))
                     expected_hash = str(ver_entry.get("hash", ""))
                 else:
                     url = str(ver_entry)
-                version = str(req_version)
+                version = str(target_version)
             else:
                 if req_version:
-                    print(f"Warning: Version {req_version} not found for {package}. Falling back to default.")
-                url = str(registry_entry.get("url", ""))
-                version = str(registry_entry.get("version", "unknown"))
-                expected_hash = str(registry_entry.get("hash", ""))
+                    print(f"Warning: Version {req_version} not found for {package}. Falling back to latest.")
+                    target_version = registry_entry.get("latest", "unknown")
+                    if target_version in versions:
+                        ver_entry = versions[target_version]
+                        url = str(ver_entry.get("url", "")) if isinstance(ver_entry, dict) else str(ver_entry)
+                        expected_hash = str(ver_entry.get("hash", "")) if isinstance(ver_entry, dict) else ""
+                        version = str(target_version)
+                
+                if not url:
+                    # Fallback for old format
+                    url = str(registry_entry.get("url", ""))
+                    version = str(registry_entry.get("version", "unknown"))
+                    expected_hash = str(registry_entry.get("hash", ""))
         else:
-            if req_version:
-                print(f"Warning: Versioning not supported by registry entry. Falling back to default.")
             url = str(registry_entry)
             version = "unknown"
+            
+        if not url:
+            print(f"Error: Could not resolve URL for package '{package}'.")
+            return 1
             
         name = str(package)
 
@@ -283,14 +305,10 @@ def remove(package: str) -> int:
     pkg_path = modules_dir / name
     
     with Spinner(f"Removing {package}..."):
-        time.sleep(0.5) # for aesthetics
+        time.sleep(0.5)
         if pkg_path.exists():
-            try:
-                pkg_path.unlink()
-                print(f"Removed {pkg_path}")
-            except OSError as e:
-                print(f"Failed to remove {pkg_path}: {e}")
-                return 1
+            pkg_path.unlink()
+            print(f"Removed {pkg_path}")
         else:
             print(f"Package '{package}' is not installed in modules/ directory.")
             
@@ -300,7 +318,7 @@ def remove(package: str) -> int:
                 with open(vjson_path, "r", encoding="utf-8") as f:
                     project_data = json.load(f)
                     
-                pkg_key = name[:-4]
+                pkg_key = name[:-4] if name.endswith(".vrb") else name
                 if "dependencies" in project_data and pkg_key in project_data["dependencies"]:
                     del project_data["dependencies"][pkg_key]
                     with open(vjson_path, "w", encoding="utf-8") as f:
@@ -308,14 +326,14 @@ def remove(package: str) -> int:
                     print(f"Removed dependency '{pkg_key}' from verba.json")
             except Exception as e:
                 print(f"Warning: Could not update verba.json: {e}")
-                
-                return 0
+    return 0
 
 
 def update(package: str | None = None) -> int:
-    registry = fetch_registry()
-    if not registry:
+    full_registry = fetch_registry()
+    if not full_registry:
         return 1
+    registry = full_registry.get("packages", {})
 
     vjson_path = Path("verba.json")
     if not vjson_path.exists():
@@ -345,9 +363,20 @@ def update(package: str | None = None) -> int:
         reg_entry = registry[pkg_name]
         reg_url = ""
         reg_version = "unknown"
+        expected_hash = ""
+
         if isinstance(reg_entry, dict):
-            reg_url = str(reg_entry.get("url", ""))
-            reg_version = str(reg_entry.get("version", "unknown"))
+            reg_version = str(reg_entry.get("latest", "unknown"))
+            ver_data = reg_entry.get("versions", {}).get(reg_version)
+            if ver_data:
+                if isinstance(ver_data, dict):
+                    reg_url = str(ver_data.get("url", ""))
+                    expected_hash = str(ver_data.get("hash", ""))
+                else:
+                    reg_url = str(ver_data)
+            else:
+                reg_url = str(reg_entry.get("url", ""))
+                expected_hash = str(reg_entry.get("hash", ""))
         else:
             reg_url = str(reg_entry)
             
@@ -359,7 +388,6 @@ def update(package: str | None = None) -> int:
             sys.stdout.write(f"'{pkg_name}' is already up-to-date (v{curr_version}).\n")
             continue
             
-        expected_hash = str(reg_entry.get("hash", "")) if isinstance(reg_entry, dict) else ""
         success, pkg_hash = download_package(str(pkg_name), reg_url, expected_hash)
         if success:
             _update_verba_json(str(pkg_name), reg_url, reg_version, pkg_hash)
@@ -383,7 +411,6 @@ def list_pkgs() -> int:
         
     print("Installed Verba Packages:")
     
-    # Try to load versions from verba.json
     versions = {}
     vjson_path = Path("verba.json")
     if vjson_path.exists():
@@ -406,10 +433,11 @@ def list_pkgs() -> int:
 
 
 def search(query: str) -> int:
-    registry = fetch_registry()
-    if not registry:
+    full_registry = fetch_registry()
+    if not full_registry:
         return 1
         
+    registry = full_registry.get("packages", {})
     print(f"Searching for '{query}' in Verba Registry:")
     found = False
     for name, data in registry.items():
@@ -417,7 +445,7 @@ def search(query: str) -> int:
             version = "unknown"
             description = ""
             if isinstance(data, dict):
-                version = data.get("version", "unknown")
+                version = data.get("latest", data.get("version", "unknown"))
                 description = data.get("description", "")
             
             output = f"  - {name} (v{version})"

@@ -21,6 +21,8 @@
             border-radius: 12px;
             padding: 24px;
             transition: transform 0.2s, background 0.2s;
+            display: flex;
+            flex-direction: column;
         }
         .package-card:hover {
             background: rgba(255, 255, 255, 0.05);
@@ -46,11 +48,21 @@
             font-size: 0.85rem;
             font-family: 'JetBrains Mono', monospace;
         }
+        .pkg-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .pkg-meta span strong {
+            color: #999;
+        }
         .pkg-desc {
             color: #a6adbb;
             line-height: 1.6;
             margin-bottom: 20px;
-            min-height: 50px;
+            flex-grow: 1;
         }
         .install-box {
             background: #111;
@@ -73,26 +85,16 @@
         .install-cmd {
             color: #e0e6ed;
         }
-        .copy-btn {
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            padding: 4px;
-        }
-        .copy-btn:hover {
-            color: #fff;
-        }
         .hash-detail {
             font-size: 0.75rem;
-            color: #666;
+            color: #444;
             margin-top: 15px;
             word-break: break-all;
             font-family: 'JetBrains Mono', monospace;
         }
     </style>
 </head>
-    <body class="dark-theme">
+<body class="dark-theme">
     <main class="content-area" style="max-width: 1000px; margin: 0 auto;">
         <header class="section" style="padding-bottom: 0; border-bottom: none;">
             <div class="text-logo-wrapper">
@@ -110,11 +112,15 @@
                     <h3 class="pkg-name">math_plus</h3>
                     <span class="pkg-version">v1.1.0</span>
                 </div>
+                <div class="pkg-meta">
+                    <span><strong>Author:</strong> thegitguru</span>
+                    <span><strong>License:</strong> MIT</span>
+                </div>
                 <p class="pkg-desc">Extended math utilities including GCD, LCM, Fibonacci sequence, and unit conversions (deg/rad).</p>
                 <div class="install-box">
                     <span class="install-cmd">verba install math_plus</span>
                 </div>
-                <div class="hash-detail">SHA256: 73d2bd53c448b6d59502c108d2a6698211ba524e2485f30647e3846a65e6ce93</div>
+                <div class="hash-detail">SHA256: 73d2bd53...</div>
             </div>
 
             <!-- String Box -->
@@ -123,11 +129,15 @@
                     <h3 class="pkg-name">string_box</h3>
                     <span class="pkg-version">v1.0.0</span>
                 </div>
+                <div class="pkg-meta">
+                    <span><strong>Author:</strong> thegitguru</span>
+                    <span><strong>License:</strong> MIT</span>
+                </div>
                 <p class="pkg-desc">Fancy string formatting utilities to draw ASCII boxes and headers in terminal applications.</p>
                 <div class="install-box">
                     <span class="install-cmd">verba install string_box</span>
                 </div>
-                <div class="hash-detail">SHA256: 87deecf937239226285cbfd1f2bec2088395ef827081757196b5b49e2d7052f2</div>
+                <div class="hash-detail">SHA256: 87deecf9...</div>
             </div>
 
             <!-- Date Helper -->
@@ -136,11 +146,15 @@
                     <h3 class="pkg-name">date_helper</h3>
                     <span class="pkg-version">v1.0.0</span>
                 </div>
+                <div class="pkg-meta">
+                    <span><strong>Author:</strong> thegitguru</span>
+                    <span><strong>License:</strong> MIT</span>
+                </div>
                 <p class="pkg-desc">Simplify date formatting and perform human-friendly time checks like weekend detection.</p>
                 <div class="install-box">
                     <span class="install-cmd">verba install date_helper</span>
                 </div>
-                <div class="hash-detail">SHA256: 9ef470828d25e9da1333822e88f71c6b0f99814127a71f2704bffd37c0f5dbf3</div>
+                <div class="hash-detail">SHA256: 9ef47082...</div>
             </div>
 
             <!-- Test Pkg -->
@@ -149,11 +163,15 @@
                     <h3 class="pkg-name">test_pkg</h3>
                     <span class="pkg-version">v1.0.0</span>
                 </div>
+                <div class="pkg-meta">
+                    <span><strong>Author:</strong> thegitguru</span>
+                    <span><strong>License:</strong> MIT</span>
+                </div>
                 <p class="pkg-desc">Standard test package used for verifying Verba installations and module imports.</p>
                 <div class="install-box">
                     <span class="install-cmd">verba install test_pkg</span>
                 </div>
-                <div class="hash-detail">SHA256: 112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89</div>
+                <div class="hash-detail">SHA256: 112517c7...</div>
             </div>
         </div>
 

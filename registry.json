@@ -1,35 +1,55 @@
 {
-  "test_pkg": {
-    "version": "1.0.0",
-    "description": "A standard test package for Verba modules.",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
-    "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
-  },
-  "date_helper": {
-    "version": "1.0.0",
-    "description": "Simplify date formatting and human-friendly time checks.",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/date_helper.vrb",
-    "hash": "9ef470828d25e9da1333822e88f71c6b0f99814127a71f2704bffd37c0f5dbf3"
-  },
-  "string_box": {
-    "version": "1.0.0",
-    "description": "Fancy string formatting and box draws for CLI apps.",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/string_box.vrb",
-    "hash": "87deecf937239226285cbfd1f2bec2088395ef827081757196b5b49e2d7052f2"
-  },
-  "math_plus": {
-    "version": "1.1.0",
-    "description": "Extended math utilities with GCD, LCM, Fibonacci, and unit conversions.",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
-    "hash": "73d2bd53c448b6d59502c108d2a6698211ba524e2485f30647e3846a65e6ce93",
-    "versions": {
-      "1.0.0": {
-        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus.vrb",
-        "hash": "589ec985549f651e4d70fae8770dd727a7f69ccd2a7134150ede1c98369c069b"
-      },
-      "1.1.0": {
-        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
-        "hash": "73d2bd53c448b6d59502c108d2a6698211ba524e2485f30647e3846a65e6ce93"
+  "packages": {
+    "date_helper": {
+      "latest": "1.0.0",
+      "description": "Simplify date formatting and human-friendly time checks.",
+      "author": "thegitguru",
+      "license": "MIT",
+      "versions": {
+        "1.0.0": {
+          "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/date_helper.vrb",
+          "hash": "9ef470828d25e9da1333822e88f71c6b0f99814127a71f2704bffd37c0f5dbf3"
+        }
+      }
+    },
+    "string_box": {
+      "latest": "1.0.0",
+      "description": "Fancy string formatting and box draws for CLI apps.",
+      "author": "thegitguru",
+      "license": "MIT",
+      "versions": {
+        "1.0.0": {
+          "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/string_box.vrb",
+          "hash": "87deecf937239226285cbfd1f2bec2088395ef827081757196b5b49e2d7052f2"
+        }
+      }
+    },
+    "math_plus": {
+      "latest": "1.1.0",
+      "description": "Extended math utilities with GCD, LCM, Fibonacci, and unit conversions.",
+      "author": "thegitguru",
+      "license": "MIT",
+      "versions": {
+        "1.0.0": {
+          "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus.vrb",
+          "hash": "589ec985549f651e4d70fae8770dd727a7f69ccd2a7134150ede1c98369c069b"
+        },
+        "1.1.0": {
+          "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
+          "hash": "73d2bd53c448b6d59502c108d2a6698211ba524e2485f30647e3846a65e6ce93"
+        }
+      }
+    },
+    "test_pkg": {
+      "latest": "1.0.0",
+      "description": "A standard test package for Verba modules.",
+      "author": "thegitguru",
+      "license": "MIT",
+      "versions": {
+        "1.0.0": {
+          "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
+          "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
+        }
       }
     }
   }
