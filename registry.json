@@ -1,10 +1,12 @@
 {
   "test_pkg": {
     "version": "1.0.1",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb"
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
+    "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
   },
   "math_ext": {
     "version": "1.2.5",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb"
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
+    "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
   }
 }
