@@ -134,6 +134,10 @@ def main(argv: list[str] | None = None) -> int:
     up_p = sub.add_parser("update", help="Update a specific package, or all packages in verba.json.")
     up_p.add_argument("package", nargs="?", help="Name of the package to update.")
     
+    # search
+    search_p = sub.add_parser("search", help="Search for a package in the registry.")
+    search_p.add_argument("query", help="Search query (package name).")
+
     # list
     sub.add_parser("list", help="List currently installed packages.")
 
@@ -172,6 +176,9 @@ def main(argv: list[str] | None = None) -> int:
         if ns.command == "list":
             from . import pkg
             return pkg.list_pkgs()
+        if ns.command == "search":
+            from . import pkg
+            return pkg.search(ns.query)
         if ns.command == "run":
             return run_file(Path(ns.file))
             
