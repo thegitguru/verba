@@ -133,6 +133,13 @@ class Ask(Stmt):
 
 
 @dataclass(frozen=True)
+class Unless(Stmt):
+    span: Span
+    condition: BoolExpr
+    body: list[Stmt]
+
+
+@dataclass(frozen=True)
 class If(Stmt):
     span: Span
     condition: BoolExpr

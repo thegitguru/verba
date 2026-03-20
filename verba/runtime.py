@@ -91,7 +91,7 @@ class Interpreter:
             if isinstance(s, ast.If):
                 if self._has_yield(s.then_body): return True
                 if s.else_body and self._has_yield(s.else_body): return True
-            if isinstance(s, (ast.Repeat, ast.While, ast.ForEach, ast.ForEachIndexed, ast.WithStmt, ast.Test)):
+            if isinstance(s, (ast.Repeat, ast.While, ast.Unless, ast.ForEach, ast.ForEachIndexed, ast.WithStmt, ast.Test)):
                 if hasattr(s, 'body') and self._has_yield(s.body): return True
             if isinstance(s, ast.TryBlock):
                 if self._has_yield(s.try_body): return True
@@ -110,6 +110,8 @@ class Interpreter:
             elif isinstance(s, ast.If):
                 if self._eval_bool(s.condition, env=env): yield from self._exec_generator(s.then_body, env=env)
                 elif s.else_body: yield from self._exec_generator(s.else_body, env=env)
+            elif isinstance(s, ast.Unless):
+                if not self._eval_bool(s.condition, env=env): yield from self._exec_generator(s.body, env=env)
             elif isinstance(s, ast.Repeat):
                 n = int(self._to_number(self._eval_expr(s.times, env=env, context="general"), s.span.line_no))
                 for i in range(n):
@@ -324,6 +326,12 @@ class Interpreter:
                 self._exec_block(s.then_body, env=env)
             elif s.else_body is not None:
                 self._exec_block(s.else_body, env=env)
+            return
+
+        if isinstance(s, ast.Unless):
+            ok = self._eval_bool(s.condition, env=env)
+            if not ok:
+                self._exec_block(s.body, env=env)
             return
 
         if isinstance(s, ast.Repeat):

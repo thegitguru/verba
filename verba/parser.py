@@ -55,6 +55,8 @@ from .ast import (
     SetVar,
     Span,
     Stmt,
+    Test,
+    Unless,
     VarRef,
     While,
     TryBlock,
@@ -1110,6 +1112,29 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             _require_period(end_line, end_no)
             cur.i += 1
         return If(span, condition, then_body, else_body)
+
+    # unless cond:
+    if first_val == "unless":
+        cond_tokens = tokens[1:]
+        if not cond_tokens:
+            raise VerbaParseError("I expected a condition after 'unless'.", line_no=line_no, col=tokens[0].col + len(tokens[0].value))
+        if term_val != ":":
+            raise VerbaParseError(
+                "An unless line must end with ':'",
+                line_no=line_no, col=cond_tokens[-1].col + len(cond_tokens[-1].value), line=lt.raw,
+            )
+        condition = parse_condition(cond_tokens, line_no=line_no)
+        cur.i += 1
+        body = _parse_block(cur, expected_indent=expected_indent + 4)
+        if cur.i >= len(cur.lines):
+            raise VerbaParseError("I expected 'end.'", line_no=line_no)
+        end_line = cur.lines[cur.i]
+        end_no = cur.i + 1
+        if end_line.indent != expected_indent or not end_line.tokens or end_line.tokens[0].value.lower() != "end":
+            raise VerbaParseError("I expected 'end.'", line_no=end_no, col=end_line.indent, line=end_line.raw)
+        _require_period(end_line, end_no)
+        cur.i += 1
+        return Unless(span, condition, body)
 
     # repeat N times:
     if first_val == "repeat":

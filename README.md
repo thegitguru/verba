@@ -148,8 +148,12 @@ if score > 90:
     say "A grade".
 else if score > 70:
     say "B grade".
-else:
-    say "C grade".
+otherwise:
+    say "Try harder!".
+end.
+
+unless name == "Alice":
+    say "Access denied.".
 end.
 ```
 
@@ -157,7 +161,16 @@ end.
 
 **Aliases:** `is` → `==`, `is not` → `!=`, `is greater than` → `>`, `is less than` → `<`, `is at least` → `>=`, `is at most` → `<=`, `does not equal` → `!=`
 
-**Logical operators:** `and`, `or`, `not`
+### Logical Operators
+
+Support: `and`, `or`, `not`, `<`, `>`, `<=`, `>=`, `==`. `!=`.
+
+Additionally, Verba supports Python-style `!null` (is not null) and `null` (is null) shorthand:
+```verba
+if player !null:
+    say "Ready!".
+end.
+```
 
 ### Loops
 
