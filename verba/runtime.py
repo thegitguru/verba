@@ -640,11 +640,12 @@ class Interpreter:
             return
 
         if isinstance(s, ast.EnumDef):
-            # Enums are objects where members are their own unique identifiers
+            # Enums are objects where members are their own unique identifiers (lowercased for consistency)
             obj = NativeInstance(s.name, {})
             for m in s.members:
-                obj.props[m] = f"{s.name}.{m}"
-            env.set(s.name, obj)
+                low_m = m.lower()
+                obj.props[low_m] = f"{s.name.lower()}.{low_m}"
+            env.set(s.name.lower(), obj)
             return
 
         if isinstance(s, ast.ClassDef):

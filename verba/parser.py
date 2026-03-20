@@ -1321,10 +1321,10 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
                 break
             wl_lc = _lc(wl.tokens)
             _require_period(wl, wl_no)
-            if wl_lc[0] == "when":
-                # when <pattern>: ...
+            if wl_lc[0] in ("when", "on"):
+                # when/on <pattern>: ...
                 if wl.tokens[-1].value != ":":
-                    raise VerbaParseError("A 'when' line must end with ':'", line_no=wl_no, line=wl.raw)
+                    raise VerbaParseError("A match branch must end with ':'", line_no=wl_no, line=wl.raw)
                 pattern = _parse_pattern(wl.tokens[1:-1], line_no=wl_no)
                 cur.i += 1
                 branch_body = _parse_block(cur, expected_indent=inner_indent + 4)
@@ -1686,7 +1686,7 @@ def _parse_pattern(tokens: list[Token], line_no: int) -> MatchPattern:
     if len(tokens) == 1:
         val = tokens[0].value
         low = val.lower()
-        if low in ("true", "false", "null") or val.startswith('"') or val.startswith("'") or _parse_number(val) is not None:
+        if "." in val or low in ("true", "false", "null") or val.startswith('"') or val.startswith("'") or _parse_number(val) is not None:
             return ValuePattern(span, parse_expr(tokens, line_no=line_no))
         return VariablePattern(span, low)
 
