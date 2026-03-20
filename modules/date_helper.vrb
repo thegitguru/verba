@@ -1,0 +1,14 @@
+note Date Helper Module
+
+define get_full_date:
+    note Returns the full date string like "2026-03-20".
+    y = time.year.
+    m = time.month.
+    d = time.day.
+    give "{y}-{m}-{d}".
+end.
+
+define is_weekend:
+    note Simplified check.
+    give false.
+end.

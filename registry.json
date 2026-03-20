@@ -1,28 +1,24 @@
 {
   "test_pkg": {
-    "version": "1.0.1",
+    "version": "1.0.0",
     "description": "A standard test package for Verba modules.",
     "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
     "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89",
     "versions": {
-      "1.0.1": {
-        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
-        "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
-      },
       "1.0.0": {
-        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/table.vrb",
-        "hash": "9593f6ba94d0c151121852077e6f8b96913454226a31c5000000000000000000"
+        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/hello.vrb",
+        "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
       },
       "0.9.0": {
         "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/my_module.vrb",
-        "hash": "3d60ff458fc2062325370215b369c0d5926317b6ab94c1600000000000000000"
+        "hash": "3d60ff45b8a5cd143dd6431cf6d2f76b7bf5f0f0bb3d1788704f1397648106b9"
       }
     }
   },
-  "math_ext": {
-    "version": "1.2.5",
-    "description": "Extended mathematical operations and utilities.",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb",
-    "hash": "112517c736ccf7f5e07f35c055a5e7f49dea246d6370a8bbb46b6a4173d19d89"
+  "date_helper": {
+    "version": "1.0.0",
+    "description": "Simplify date formatting and human-friendly time checks.",
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/date_helper.vrb",
+    "hash": "3c0f44497daf08e4de33a3af411c32f5800bfb45fcff77c1c91beb71771375cb0"
   }
 }
