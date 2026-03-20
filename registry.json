@@ -28,9 +28,19 @@
     "hash": "87deecf937239226285cbfd1f2bec2088395ef827081757196b5b49e2d7052f2"
   },
   "math_plus": {
-    "version": "1.0.0",
-    "description": "Factorials, prime checks, and more advanced math operations.",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus.vrb",
-    "hash": "589ec985549f651e4d70fae8770dd727a7f69ccd2a7134150ede1c98369c069b"
+    "version": "1.1.0",
+    "description": "Extended math utilities with GCD, LCM, Fibonacci, and unit conversions.",
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
+    "hash": "adf43ac7844648bab59376252b107f4a956294c1601a5dcbd3f7f7bd8830f6f5",
+    "versions": {
+      "1.0.0": {
+        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus.vrb",
+        "hash": "589ec985549f651e4d70fae8770dd727a7f69ccd2a7134150ede1c98369c069b"
+      },
+      "1.1.0": {
+        "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
+        "hash": "adf43ac7844648bab59376252b107f4a956294c1601a5dcbd3f7f7bd8830f6f5"
+      }
+    }
   }
 }

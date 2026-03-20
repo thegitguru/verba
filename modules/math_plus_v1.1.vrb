@@ -1,0 +1,77 @@
+note Extended Math Utilities v1.1.0 for Verba
+
+define factorial needing n:
+    note Recursive factorial calculation.
+    if n <= 1:
+        give 1.
+    end.
+    m = n - 1.
+    prev = the result of running factorial with m.
+    give n * prev.
+end.
+
+define is_prime needing n:
+    note Check if n is a prime number.
+    if n <= 1:
+        give false.
+    end.
+    if n == 2:
+        give true.
+    end.
+    
+    i = 2.
+    res = true.
+    while i * i <= n:
+        if n % i == 0:
+            res = false.
+            stop.
+        end.
+        i += 1.
+    end.
+    give res.
+end.
+
+define gcd needing a, b:
+    note Greatest Common Divisor (Euclidean algorithm).
+    while b != 0:
+        t = b.
+        b = a % b.
+        a = t.
+    end.
+    give a.
+end.
+
+define lcm needing a, b:
+    note Least Common Multiple.
+    if a == 0: give 0. end.
+    if b == 0: give 0. end.
+    
+    g = the result of running gcd with a, b.
+    val = (a * b) / g.
+    give val.
+end.
+
+define fibonacci needing n:
+    note Returns the Nth Fibonacci number.
+    if n <= 1: give n. end.
+    a = 0.
+    b = 1.
+    repeat n-1 times:
+        t = a + b.
+        a = b.
+        b = t.
+    end.
+    give b.
+end.
+
+define deg_to_rad needing deg:
+    note Converts degrees to radians.
+    pi = the result of running math.pi.
+    give deg * (pi / 180).
+end.
+
+define rad_to_deg needing rad:
+    note Converts radians to degrees.
+    pi = the result of running math.pi.
+    give rad * (180 / pi).
+end.
