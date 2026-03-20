@@ -31,7 +31,7 @@
     "version": "1.1.0",
     "description": "Extended math utilities with GCD, LCM, Fibonacci, and unit conversions.",
     "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
-    "hash": "adf43ac7844648bab59376252b107f4a956294c1601a5dcbd3f7f7bd8830f6f5",
+    "hash": "73d2bd53c448b6d59502c108d2a6698211ba524e2485f30647e3846a65e6ce93",
     "versions": {
       "1.0.0": {
         "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus.vrb",
@@ -39,7 +39,7 @@
       },
       "1.1.0": {
         "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v1.1.vrb",
-        "hash": "adf43ac7844648bab59376252b107f4a956294c1601a5dcbd3f7f7bd8830f6f5"
+        "hash": "73d2bd53c448b6d59502c108d2a6698211ba524e2485f30647e3846a65e6ce93"
       }
     }
   }

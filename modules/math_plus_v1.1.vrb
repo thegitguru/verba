@@ -43,8 +43,12 @@ end.
 
 define lcm needing a, b:
     note Least Common Multiple.
-    if a == 0: give 0. end.
-    if b == 0: give 0. end.
+    if a == 0:
+        give 0.
+    end.
+    if b == 0:
+        give 0.
+    end.
     
     g = the result of running gcd with a, b.
     val = (a * b) / g.
@@ -53,7 +57,9 @@ end.
 
 define fibonacci needing n:
     note Returns the Nth Fibonacci number.
-    if n <= 1: give n. end.
+    if n <= 1:
+        give n.
+    end.
     a = 0.
     b = 1.
     repeat n-1 times:
