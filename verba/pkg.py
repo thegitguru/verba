@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import sys
 import time
 import threading
+import hashlib
 
 
 DEFAULT_REGISTRY_URL = "https://raw.githubusercontent.com/thegitguru/Verba/main/registry.json"
@@ -64,33 +65,65 @@ def fetch_registry() -> dict:
     return result
 
 
-def download_package(name: str, url: str) -> bool:
+def compute_sha256(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+def download_package(name: str, url: str, expected_hash: str = "") -> tuple[bool, str]:
     if not name.endswith(".vrb"):
         name += ".vrb"
         
+    global_cache_dir = Path.home() / ".verba" / "cache"
+    global_cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    # We use a primitive cache key based on the URL hash
+    cache_key = hashlib.md5(url.encode()).hexdigest()
+    cache_path = global_cache_dir / f"{name}_{cache_key}.vrb"
+    
+    content = None
+    if cache_path.exists():
+        content = cache_path.read_bytes()
+        actual_hash = compute_sha256(content)
+        if expected_hash and actual_hash != expected_hash:
+            # Hash mismatch in cache, force refetch
+            content = None
+        else:
+            print(f"Loaded {name} from global cache.")
+
     success = False
-    with Spinner(f"Installing {name} from {url}..."):
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Verba'})
-            with urllib.request.urlopen(req) as response:
-                content = response.read()
-            
-            modules_dir = Path("modules")
-            modules_dir.mkdir(exist_ok=True)
-            (modules_dir / name).write_bytes(content)
-            success = True
-        except Exception as e:
-            err_msg = str(e)
-            
-    if success:
-        print(f"Successfully installed to {modules_dir / name}")
-        return True
+    err_msg = ""
+    if content is None:
+        with Spinner(f"Installing {name} from {url}..."):
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Verba'})
+                with urllib.request.urlopen(req) as response:
+                    content = response.read()
+                
+                # Check integrity before saving
+                actual_hash = compute_sha256(content)
+                if expected_hash and actual_hash != expected_hash:
+                    raise Exception(f"Checksum mismatch! Expected {expected_hash}, got {actual_hash}")
+                    
+                # Save to cache
+                cache_path.write_bytes(content)
+                success = True
+            except Exception as e:
+                err_msg = str(e)
+    else:
+        success = True
+
+    if success and content is not None:
+        modules_dir = Path("modules")
+        modules_dir.mkdir(exist_ok=True)
+        (modules_dir / name).write_bytes(content)
+        actual_hash = compute_sha256(content)
+        print(f"Successfully installed to {modules_dir / name} (sha256: {actual_hash[:8]})")
+        return True, actual_hash
     else:
         print(f"I failed to install the package: {err_msg}")
-        return False
+        return False, ""
 
 
-def _update_verba_json(pkg_key: str, url: str, version: str = "unknown"):
+def _update_verba_json(pkg_key: str, url: str, version: str = "unknown", package_hash: str = ""):
     vjson_path = Path("verba.json")
     if not vjson_path.exists():
         return
@@ -113,6 +146,28 @@ def _update_verba_json(pkg_key: str, url: str, version: str = "unknown"):
         print(f"Updated verba.json with dependency '{pkg_key}' (v{version})")
     except Exception as e:
         print(f"Warning: Could not update verba.json: {e}")
+        
+    # Generate verba-lock.json with checksum integrity
+    lock_path = Path("verba-lock.json")
+    lock_data = {"dependencies": {}}
+    if lock_path.exists():
+        try:
+            with open(lock_path, "r", encoding="utf-8") as f:
+                lock_data = json.load(f)
+        except Exception:
+            pass
+            
+    lock_data["dependencies"][pkg_key] = {
+        "version": version,
+        "url": url,
+        "integrity": f"sha256-{package_hash}"
+    }
+    
+    try:
+        with open(lock_path, "w", encoding="utf-8") as f:
+            json.dump(lock_data, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not update verba-lock.json: {e}")
 
 
 def install(package: str | None = None) -> int:
@@ -131,9 +186,24 @@ def install(package: str | None = None) -> int:
                 print("No dependencies found in verba.json.")
                 return 0
                 
+            # Load lockfile for expected hashes
+            lockfile_hashes = {}
+            lock_path = Path("verba-lock.json")
+            if lock_path.exists():
+                try:
+                    with open(lock_path, "r", encoding="utf-8") as lf:
+                        lock_deps = json.load(lf).get("dependencies", {})
+                        for l_name, l_info in lock_deps.items():
+                            val = str(l_info.get("integrity", ""))
+                            if val.startswith("sha256-"):
+                                lockfile_hashes[l_name] = val.split("-")[1]
+                except Exception:
+                    pass
+                    
             for dep_name, dep_info in deps.items():
                 dep_url = dep_info["url"] if isinstance(dep_info, dict) else dep_info
-                download_package(dep_name, dep_url)
+                expected_hash = lockfile_hashes.get(dep_name, "")
+                download_package(dep_name, dep_url, expected_hash)
             return 0
         except Exception as e:
             print(f"Error reading verba.json: {e}")
@@ -159,18 +229,21 @@ def install(package: str | None = None) -> int:
             return 1
             
         registry_entry = registry[package]
+        expected_hash = ""
         if isinstance(registry_entry, dict):
             url = str(registry_entry.get("url", ""))
             version = str(registry_entry.get("version", "unknown"))
+            expected_hash = str(registry_entry.get("hash", ""))
         else:
             url = str(registry_entry)
             version = "unknown"
             
         name = str(package)
 
-    if download_package(name, url):
+    success, pkg_hash = download_package(name, url, expected_hash)
+    if success:
         pkg_key = str(name[:-4]) if name.endswith(".vrb") else str(name)
-        _update_verba_json(pkg_key, url, version)
+        _update_verba_json(pkg_key, url, version, pkg_hash)
         return 0
     return 1
 
@@ -260,8 +333,10 @@ def update(package: str | None = None) -> int:
             sys.stdout.write(f"'{pkg_name}' is already up-to-date (v{curr_version}).\n")
             continue
             
-        if download_package(str(pkg_name), reg_url):
-            _update_verba_json(str(pkg_name), reg_url, reg_version)
+        expected_hash = str(reg_entry.get("hash", "")) if isinstance(reg_entry, dict) else ""
+        success, pkg_hash = download_package(str(pkg_name), reg_url, expected_hash)
+        if success:
+            _update_verba_json(str(pkg_name), reg_url, reg_version, pkg_hash)
             updated_count += 1
             
     if updated_count == 0 and not package:
