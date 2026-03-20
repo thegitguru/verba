@@ -420,9 +420,10 @@ class AwaitStmt(Stmt):
 
 @dataclass(frozen=True)
 class ServeStart(Stmt):
-    """serve on port <expr>."""
+    """serve on port <expr>[: ... end]."""
     span: Span
     port: Expr
+    body: Optional[list["Stmt"]] = None
 
 
 @dataclass(frozen=True)
@@ -582,3 +583,8 @@ class Match(Stmt):
     branches: list[MatchBranch]
     else_body: Optional[list["Stmt"]] = None
 
+@dataclass(frozen=True)
+class EnumDef(Stmt):
+    span: Span
+    name: str
+    members: list[str]

@@ -15,6 +15,7 @@ class _VerbaWindow:
             # Headless or missing display
             self.root = None
         self.buttons = []
+        self.inputs = {}
 
     def add_button(self, text, callback_name):
         if not self.root: return
@@ -33,6 +34,24 @@ class _VerbaWindow:
         if not self.root: return
         lbl = tk.Label(self.root, text=str(text))
         lbl.pack(pady=5)
+        return lbl
+
+    def add_input(self, label_text):
+        if not self.root: return
+        # Create a container
+        frame = tk.Frame(self.root)
+        frame.pack(pady=5)
+        lbl = tk.Label(frame, text=str(label_text))
+        lbl.pack(side=tk.LEFT)
+        ent = tk.Entry(frame)
+        ent.pack(side=tk.LEFT)
+        self.inputs[str(label_text)] = ent
+        return ent
+
+    def get_input(self, label_text):
+        if str(label_text) in self.inputs:
+            return self.inputs[str(label_text)].get()
+        return ""
 
     def start(self):
         if self.root:
@@ -45,6 +64,8 @@ def gui_window(title, __interp__):
     methods = {}
     methods["button"] = NativeFunction("button", ["text", "callback"], win.add_button)
     methods["label"]  = NativeFunction("label",  ["text"],             win.add_label)
+    methods["input"]  = NativeFunction("input",  ["label"],            win.add_input)
+    methods["get"]    = NativeFunction("get",    ["label"],            win.get_input)
     methods["show"]   = NativeFunction("show",   [],                 win.start)
     
     return NativeInstance("gui_window", methods)

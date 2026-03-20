@@ -1,0 +1,45 @@
+note "Verba Multi-threaded Web Scraper".
+note "Demonstrates: async/await, fetching, and custom classes.".
+
+class ScrapeResult:
+    note "A class to store the result of a scrape.".
+    url = "".
+    length = 0.
+    ok = false.
+end.
+
+define scrape_async needing site:
+    # Use the built-in fetch command
+    fetch site into html.
+    res = new ScrapeResult.
+    res.url = site.
+    res.length = length of html.
+    res.ok = true.
+    
+    say "Finished scraping ", site.
+    give res.
+end.
+
+# A list of sites to scrape in parallel
+targets = [
+    "https://www.google.com", 
+    "https://www.python.org", 
+    "https://builtin.verba.io"
+].
+
+say "Starting scraper...".
+
+# Launch multiple tasks in parallel
+task1 = async run scrape_async with "https://www.google.com".
+task2 = async run scrape_async with "https://www.python.org".
+
+say "Waiting for results...".
+
+# Await the tasks as they finish
+r1 = await task1.
+r2 = await task2.
+
+say "Google result length: ", r1.length.
+say "Python result length: ", r2.length.
+
+say "Task Manager Complete.".

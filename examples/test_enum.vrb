@@ -1,0 +1,19 @@
+enum Status:
+    Pending.
+    Active.
+    Failed.
+end.
+
+myStatus = Status.Active.
+say "Current Status: ", myStatus.
+
+match myStatus:
+    on Status.Pending:
+        say "Please wait...".
+    on Status.Active:
+        say "The mission is running!".
+    on Status.Failed:
+        say "Something went wrong.".
+    otherwise:
+        say "Unknown state.".
+end.

@@ -1,0 +1,42 @@
+note "Verba Secure Lockbox Server".
+note "Demonstrates: crypto, http server, conditional routing, and natural syntax.".
+
+# Security Configuration
+master_key_hash = the result of running crypto.hash with "p@ssword123", "sha256".
+session_token = the result of running crypto.generate_token with 16.
+
+say "Vault is now active at http://localhost:8080".
+say "Session Token for this run: ", session_token.
+
+serve on port 8080:
+    on route "/" with method "GET":
+        page = "<h1>Verba Lockbox</h1>".
+        page = page + "<p>Please enter the secret token in the URL: ?token=TOKEN</p>".
+        
+        # Check if the user provided the correct token as a query parameter
+        if request.query_token is session_token:
+            respond with "Welcome to the vault!", "The secret is: Verba is Awesome." status 200 type "text/html".
+        otherwise:
+            respond with page status 403 type "text/html".
+        end.
+    end.
+
+    on route "/login" with method "POST":
+        # In a real app, request.form_password would be the submitted field
+        submitted = request.form_password.
+        hashed = the result of running crypto.hash with submitted, "sha256".
+
+        if hashed is master_key_hash:
+            respond with "Login Successful. Use this token: ", session_token status 200 type "text/plain".
+        otherwise:
+            respond with "Access Denied." status 401 type "text/plain".
+        end.
+    end.
+
+    on route "/api/encrypt" with method "POST":
+        # Encrypt a message via the API
+        data = request.body.
+        secret = the result of running crypto.encrypt with data, "internal-vault-key".
+        respond with secret status 200 type "text/plain".
+    end.
+end.

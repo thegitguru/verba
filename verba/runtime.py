@@ -63,8 +63,11 @@ class Interpreter:
             needs_interp: set = getattr(mod, "NEEDS_INTERP", set())
             methods = {}
             for fn_name, (fn, params) in mod.FUNCTIONS.items():
+                p_list = list(params)
+                if fn_name in needs_interp:
+                    p_list.append("__interp__")
                 methods[fn_name] = NativeFunction(
-                    name=fn_name, params=params, fn=fn,
+                    name=fn_name, params=p_list, fn=fn,
                     needs_interp=(fn_name in needs_interp),
                 )
             self.globals.set(mod_name, NativeInstance(mod_name, methods))
@@ -636,6 +639,14 @@ class Interpreter:
                     curr = curr.parent
             return
 
+        if isinstance(s, ast.EnumDef):
+            # Enums are objects where members are their own unique identifiers
+            obj = NativeInstance(s.name, {})
+            for m in s.members:
+                obj.props[m] = f"{s.name}.{m}"
+            env.set(s.name, obj)
+            return
+
         if isinstance(s, ast.ClassDef):
             parent = env.get_class(s.parent_name) if s.parent_name else None
             if s.parent_name and parent is None:
@@ -688,7 +699,8 @@ class Interpreter:
 
         if isinstance(s, ast.AsyncRun):
             import threading
-            task_env = Environment(parent=self.globals)
+            # Background tasks should see everything the current scope sees
+            task_env = Environment(parent=env)
             fn_def = env.get_function(s.func_name)
             if not fn_def:
                 raise VerbaRuntimeError(f"I don't know a function called {s.func_name}.", line_no=ln)
@@ -733,6 +745,10 @@ class Interpreter:
             return
 
         if isinstance(s, ast.ServeStart):
+            # Execute the body if it's a block (registers routes)
+            if s.body:
+                self._exec_block(s.body, env=env)
+                
             import http.server, threading
             port = int(self._to_number(self._eval_expr(s.port, env=env, context="general"), ln))
             interp = self
@@ -745,6 +761,7 @@ class Interpreter:
                     parsed   = urllib.parse.urlparse(self.path)
                     path     = parsed.path
                     qs       = urllib.parse.parse_qs(parsed.query)
+                    print(f"DEBUG HTTP: method={method} path={path} qs={qs}")
                     length   = int(self.headers.get("Content-Length", 0))
                     raw_body = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
                     form     = urllib.parse.parse_qs(raw_body)
@@ -775,6 +792,11 @@ class Interpreter:
                         self.send_header("Location", r.url)
                         self.send_header("Content-Length", "0")
                         self.end_headers()
+                        return
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        self._raw_respond(500, "text/plain", f"Server Error: {str(e)}")
                         return
                     # If no respond statement was hit, send empty 200
                     self._raw_respond(200, "text/html", "")
@@ -838,8 +860,8 @@ class Interpreter:
             if not env.contains(e.list_name):
                 raise VerbaRuntimeError(f"The variable called {e.list_name} has not been defined yet.", line_no=ln)
             lst = env.get(e.list_name)
-            if not isinstance(lst, list):
-                raise VerbaRuntimeError(f"The variable called {e.list_name} is not a list.", line_no=ln)
+            if not isinstance(lst, (list, str)):
+                raise VerbaRuntimeError(f"The variable called {e.list_name} is not a list or word.", line_no=ln)
             return len(lst)
 
         if isinstance(e, ast.Ref):
@@ -936,6 +958,15 @@ class Interpreter:
         if isinstance(e, ast.VarRef):
             if env.contains(e.name):
                 return env.get(e.name)
+            
+            # Check for class reference
+            cls = env.get_class(e.name)
+            if cls: return cls
+            
+            # Check for function reference
+            fn = env.get_function(e.name)
+            if fn: return fn
+
             if context == "say":
                 # In output, undefined names are treated as literal words (so "say hello." works).
                 return e.name
@@ -957,6 +988,15 @@ class Interpreter:
         if isinstance(e, ast.BinaryOp):
             left = self._eval_expr(e.left, env=env, context=context)
             right = self._eval_expr(e.right, env=env, context=context)
+            
+            # String operations
+            if e.op == "+" and (isinstance(left, str) or isinstance(right, str)):
+                return self._to_word(left) + self._to_word(right)
+            if e.op == "*" and isinstance(left, str) and isinstance(right, (int, float)):
+                return left * int(right)
+            if e.op == "*" and isinstance(right, str) and isinstance(left, (int, float)):
+                return right * int(left)
+
             if e.op in ["+", "-", "*", "/", "%", "**", "//"]:
                 a = self._to_number(left, ln)
                 b = self._to_number(right, ln)

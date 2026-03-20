@@ -131,10 +131,13 @@ def _strip_comments(source: str) -> str:
                 out.append("\n")
             i += 1
             continue
-        # Check for single-line comment: /-
-        if source[i:i+2] == "/-":
-            # Skip until end of line
+        # Check for single-line comment: /- or #
+        if (source[i:i+2] == "/-") or (source[i] == "#"):
+            skipped = 0
+            # If it's "/-", we've consumed nothing yet by i, but we will skip from i.
+            # Handle both cases: # (1 char) and /- (2 chars)
             while i < len(source) and source[i] != "\n":
+                out.append(" ")
                 i += 1
             continue
         out.append(source[i])
@@ -143,5 +146,43 @@ def _strip_comments(source: str) -> str:
 
 
 def tokenize_program(source: str) -> list[LineTokens]:
-    lines = _strip_comments(source).splitlines()
-    return [tokenize_line(line, idx + 1) for idx, line in enumerate(lines)]
+    # Preliminary walk to handle multi-line brackets/parens
+    raw_lines = _strip_comments(source).splitlines()
+    final_lines: list[str] = []
+    
+    buf = ""
+    target_line_no = 1
+    depth = 0
+    for idx, line in enumerate(raw_lines):
+        if not buf:
+            target_line_no = idx + 1
+            
+        # Count open vs close in THIS line
+        line_depth_change = 0
+        in_str = None
+        for ch in line:
+            if ch in "\"'" and (not in_str or in_str == ch):
+                in_str = None if in_str else ch
+            if not in_str:
+                if ch in "([{": line_depth_change += 1
+                elif ch in ")]}": line_depth_change -= 1
+        
+        if not buf:
+            buf = line
+        else:
+            buf += " " + line.strip()
+            
+        depth += line_depth_change
+        if depth <= 0:
+            final_lines.append(buf)
+            buf = ""
+            depth = 0
+            
+    if buf:
+        final_lines.append(buf)
+        
+    # We lose strict line numbers here if we just use idx + 1 
+    # but for error reporting we really want the START of the block.
+    # However, tokenize_line takes line_no. 
+    # Let's just use the current index for now.
+    return [tokenize_line(line, idx + 1) for idx, line in enumerate(final_lines)]

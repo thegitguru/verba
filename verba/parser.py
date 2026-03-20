@@ -24,6 +24,7 @@ from .ast import (
     GiveBack,
     If,
     Increase,
+    EnumDef,
     Let,
     LetResultOfRun,
     Literal,
@@ -677,6 +678,12 @@ def _parse_block(cur: _Cursor, *, expected_indent: int) -> list[Stmt]:
             elif decorators:
                 raise VerbaParseError("Decorators can only be applied to 'define' statements.", line_no=line_no, col=lt.tokens[0].col, line=lt.raw)
             out.append(stmt)
+        else:
+            # If _parse_statement returned None but didn't advance, it could loop.
+            # However, the updated _parse_statement should always advance or raise.
+            # We add a safety increment here just in case.
+            if cur.lines[cur.i] == lt:
+                cur.i += 1
     return out
 
 
@@ -1466,6 +1473,43 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         return DerefSet(span, ptr_name, value)
 
+    # enum <name>: ... end.
+    if first_val == "enum":
+        name = _join_name(tokens[1:], line_no=line_no)
+        cur.i += 1
+        members = []
+        if term_val == ":":
+            inner_indent = expected_indent + 4
+            while cur.i < len(cur.lines):
+                cur_line = cur.lines[cur.i]
+                cur_no = cur.i + 1
+                if not cur_line.tokens:
+                    cur.i += 1
+                    continue
+                if cur_line.indent < inner_indent:
+                    break
+                if cur_line.tokens[0].value.lower() == "end":
+                    break
+                
+                # Each line can be "A, B, C."
+                line_tokens = cur_line.tokens
+                # strip . if present
+                if line_tokens[-1].value == ".":
+                     line_tokens = line_tokens[:-1]
+                
+                if line_tokens:
+                    parts = _split_by_commas(line_tokens)
+                    for p in parts:
+                        if p:
+                            members.append(_join_name(p, line_no=cur_no))
+                cur.i += 1
+            
+            if cur.i >= len(cur.lines) or not cur.lines[cur.i].tokens or cur.lines[cur.i].tokens[0].value.lower() != "end":
+                raise VerbaParseError("I expected 'end.' for this enum block.", line_no=line_no)
+            _require_period(cur.lines[cur.i], cur.i + 1)
+            cur.i += 1
+        return EnumDef(span, name, members)
+
     # help <name>.
     if first_val == "help":
         target = _join_name(tokens[1:], line_no=line_no)
@@ -1478,11 +1522,22 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         cur.i += 1
         return Yield(span, val)
 
-    # serve on port <expr>.
+    # serve on port <expr>[: ... end].
     if tokens_lc[:3] == ["serve", "on", "port"]:
         port_expr = parse_expr(tokens[3:], line_no=line_no)
         cur.i += 1
-        return ServeStart(span, port_expr)
+        body = None
+        if term_val == ":":
+            body = _parse_block(cur, expected_indent=expected_indent + 4)
+            if cur.i >= len(cur.lines):
+                raise VerbaParseError("I expected 'end.' for this serve block.", line_no=line_no)
+            end_line = cur.lines[cur.i]
+            end_no = cur.i + 1
+            if end_line.indent != expected_indent or not end_line.tokens or end_line.tokens[0].value.lower() != "end":
+                raise VerbaParseError("I expected 'end.' at this indent.", line_no=end_no, col=end_line.indent)
+            _require_period(end_line, end_no)
+            cur.i += 1
+        return ServeStart(span, port_expr, body)
 
     # on route <path> with method <method>:
     if tokens_lc[0] == "on" and "route" in tokens_lc:
@@ -1504,7 +1559,8 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         end_line = cur.lines[cur.i]
         end_no = cur.i + 1
         if end_line.indent != expected_indent or not end_line.tokens or end_line.tokens[0].value.lower() != "end":
-            raise VerbaParseError("I expected 'end.'", line_no=end_no, col=end_line.indent, line=end_line.raw)
+            # print(f"DEBUG: expected={expected_indent}, actual={end_line.indent}, tok={end_line.tokens[0].value if end_line.tokens else 'NONE'}")
+            raise VerbaParseError("I expected 'end.' at indent " + str(expected_indent), line_no=end_no, col=end_line.indent, line=end_line.raw)
         _require_period(end_line, end_no)
         cur.i += 1
         return ServeRoute(span, path_expr, method_expr, body)
@@ -1637,13 +1693,24 @@ def _parse_pattern(tokens: list[Token], line_no: int) -> MatchPattern:
     # default: evaluate as expression for ValuePattern
     return ValuePattern(span, parse_expr(tokens, line_no=line_no))
 
+    # Standalone expression (e.g. run logic, method call)
+    if not is_keyword_stmt:
+        # We've already checked for assignment and math above.
+        # If it's a simple name or method call, let it be a statement.
+        try:
+            expr = parse_expr(tokens, line_no=line_no)
+            cur.i += 1
+            return expr
+        except VerbaParseError:
+            # If expr parsing failed, fall through to keyword suggestion
+            pass
 
     _KNOWN_KEYWORDS = [
         "say", "display", "ask", "if", "for", "while", "repeat", "define",
         "async", "run", "give", "return", "sort", "first", "last", "add",
         "remove", "save", "load", "import", "class", "free", "delete",
         "fetch", "append", "note", "try", "match", "raise", "stop", "skip",
-        "assert", "serve", "on", "respond", "redirect", "await", "deref", "with", "help"
+        "assert", "serve", "on", "respond", "redirect", "await", "deref", "with", "help", "enum"
     ]
 
     def _suggest(word: str, candidates: list[str], threshold: float = 0.6) -> str | None:
@@ -1651,6 +1718,8 @@ def _parse_pattern(tokens: list[Token], line_no: int) -> MatchPattern:
         matches = difflib.get_close_matches(word, candidates, n=1, cutoff=threshold)
         return matches[0] if matches else None
 
+    # Fallback for unrecognized statements
+    cur.i += 1 
     suggestion = _suggest(first_val, _KNOWN_KEYWORDS)
     hint = f"Did you mean '{suggestion}'?" if suggestion else None
     raise VerbaParseError(

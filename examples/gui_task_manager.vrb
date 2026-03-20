@@ -1,0 +1,35 @@
+note "Verba Personal Task Manager".
+note "Demonstrates: cross-module GUI integration and real-time event handling.".
+
+# Global state for tasks
+tasks = [].
+app = the result of running gui.window with "My Verba Task List".
+
+define add_task:
+    note "Callback function for the Add button.".
+    # Read text from the entry field labeled "New Task"
+    new_item = the result of running app.get with "New Task".
+    
+    if new_item:
+        add new_item to tasks.
+        run app.label with new_item.
+        say "Task added: ", new_item.
+    otherwise:
+        run gui.alert with "Please enter a task name first.".
+    end.
+end.
+
+define show_count:
+    total = length of tasks.
+    run gui.alert with "You have " + total + " tasks so far.".
+end.
+
+# Initialize UI
+run app.label with "Enter a task below:".
+run app.input with "New Task".
+run app.button with "Add to List", "add_task".
+run app.button with "How many?", "show_count".
+run app.label with "--- Tasks ---".
+
+say "Starting Task Manager GUI...".
+run app.show.
