@@ -26,7 +26,7 @@ class Spinner:
             sys.stdout.flush()
             time.sleep(0.1)
             i += 1
-        sys.stdout.write("\b \n")
+        sys.stdout.write("\b \r\n")
         sys.stdout.flush()
 
     def __enter__(self):
