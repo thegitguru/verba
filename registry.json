@@ -1,3 +1,10 @@
 {
-  "test_pkg": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/hello.vrb"
+  "test_pkg": {
+    "version": "1.0.0",
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/hello.vrb"
+  },
+  "math_ext": {
+    "version": "1.2.5",
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/hello.vrb"
+  }
 }

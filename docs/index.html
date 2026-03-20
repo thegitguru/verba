@@ -142,7 +142,9 @@ verba run project.vrb</code></pre>
                         <tr><td><code>verba repl</code></td><td>Start an interactive live console.</td></tr>
                         <tr><td><code>verba format &lt;file.vrb&gt;</code></td><td>Auto-format with 4-space indentation.</td></tr>
                         <tr><td><code>verba init &lt;name&gt;</code></td><td>Initialize a new Verba project directory.</td></tr>
-                        <tr><td><code>verba install &lt;pkg&gt;</code></td><td>Download &amp; install a <code>.vrb</code> package from the registry (or URL) into <code>modules/</code>.</td></tr>
+                        <tr><td><code>verba list</code></td><td>List currently installed packages in <code>modules/</code>.</td></tr>
+                        <tr><td><code>verba install &lt;pkg&gt;</code></td><td>Download &amp; install a <code>.vrb</code> package from the registry (or URL) into <code>modules/</code>. If empty, syncs from <code>verba.json</code>.</td></tr>
+                        <tr><td><code>verba update &lt;pkg&gt;</code></td><td>Update an installed package (or all packages in <code>verba.json</code>).</td></tr>
                         <tr><td><code>verba remove &lt;pkg&gt;</code></td><td>Remove an installed package from <code>modules/</code> and update <code>verba.json</code>.</td></tr>
                     </tbody>
                 </table>
