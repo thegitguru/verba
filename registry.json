@@ -1,10 +1,10 @@
 {
   "test_pkg": {
     "version": "1.0.0",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/hello.vrb"
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/math_and_else.vrb"
   },
   "math_ext": {
     "version": "1.2.5",
-    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/hello.vrb"
+    "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/examples/math_and_else.vrb"
   }
 }

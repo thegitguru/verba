@@ -43,12 +43,13 @@ class Spinner:
 def fetch_registry() -> dict:
     registry_url = os.environ.get("VERBA_REGISTRY", DEFAULT_REGISTRY_URL)
     
-    # Local fallback testing override
-    if registry_url == DEFAULT_REGISTRY_URL and Path("registry.json").exists():
+    # Local fallback testing override (Hardcoded specifically for your local dev environment)
+    local_dev_reg = Path(r"d:\GitHub\Verba\registry.json")
+    if registry_url == DEFAULT_REGISTRY_URL and local_dev_reg.exists():
         try:
-            with open("registry.json", "r", encoding="utf-8") as f:
+            with open(local_dev_reg, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception as e:
+        except Exception:
             pass # Fallback to web request
             
     with Spinner(f"Fetching registry from {registry_url}..."):
