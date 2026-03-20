@@ -2,9 +2,9 @@ note Date Helper Module
 
 define get_full_date:
     note Returns the full date string like "2026-03-20".
-    y = time.year.
-    m = time.month.
-    d = time.day.
+    y = the result of running time.year.
+    m = the result of running time.month.
+    d = the result of running time.day.
     give "{y}-{m}-{d}".
 end.
 
