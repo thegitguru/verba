@@ -5,7 +5,14 @@ run_examples.txt
 verba_lang.egg-info/
 publisher/
 release/
-
+install/
+dist/
+install.bat
+build-packages.sh
+install.py
+install_gui.py
+install_gui.spec
+installer_version_info.txt
 # webapp runtime data
 examples/webapp/todos.txt
 examples/webapp/notes.txt
