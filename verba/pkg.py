@@ -430,20 +430,25 @@ def update(package: str | None = None) -> int:
 
 import re
 
-def list_pkgs() -> int:
+def list_pkgs(outdated_only: bool = False) -> int:
     registry_data = fetch_registry()
     registry = registry_data.get("packages", {})
 
     modules_dir = Path("modules")
     if not modules_dir.exists() or not modules_dir.is_dir():
-        print("No packages installed (modules/ directory not found).")
+        if not outdated_only:
+            print("No packages installed (modules/ directory not found).")
         return 0
         
     pkgs = [p for p in modules_dir.iterdir() if p.name.endswith(".vrb")]
     if not pkgs:
-        print("No packages installed.")
+        if not outdated_only:
+            print("No packages installed.")
         return 0
         
+    if not outdated_only:
+        print("Installed Verba Packages:")
+    
     # Read versions from verba.json as the primary source of truth for managed packages
     local_versions = {}
     vjson_path = Path("verba.json")
@@ -458,11 +463,10 @@ def list_pkgs() -> int:
         except Exception:
             pass
 
-    print("Installed Verba Packages:")
-    
     # regex to find v1.2 or v1.2.3 in the file content (fallback)
     ver_re = re.compile(r"v(\d+\.\d+(\.\d+)?)")
 
+    found_any_outdated = False
     for pkg_path in pkgs:
         name = pkg_path.stem # name without .vrb
         
@@ -489,6 +493,7 @@ def list_pkgs() -> int:
         
         # Check against registry
         status = ""
+        is_outdated = False
         if reg_key in registry:
             latest = registry[reg_key].get("latest", "unknown")
             if ver != "unknown" and latest != "unknown":
@@ -496,9 +501,18 @@ def list_pkgs() -> int:
                     status = " \033[92m[latest]\033[0m"
                 else:
                     status = f" \033[93m[outdated, latest: v{latest}]\033[0m"
+                    is_outdated = True
+                    found_any_outdated = True
         
-        print(f"  - {name} (v{ver}){status}")
+        if outdated_only:
+            if is_outdated:
+                print(f"  - {name} (v{ver}){status}")
+        else:
+            print(f"  - {name} (v{ver}){status}")
         
+    if outdated_only and not found_any_outdated:
+        print("All packages are up to date.")
+
     return 0
 
 
