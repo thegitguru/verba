@@ -107,7 +107,11 @@ define is_perfect needing n:
         end.
         i += 1.
     end.
-    give total == n.
+    if total == n:
+        give true.
+    otherwise:
+        give false.
+    end.
 end.
 
 define digits_sum needing n:
@@ -115,7 +119,7 @@ define digits_sum needing n:
     total = 0.
     while n > 0:
         total = total + (n % 10).
-        n = n / 10.
+        n = n // 10.
     end.
     give total.
 end.
@@ -126,19 +130,31 @@ define is_palindrome needing n:
     reversed = 0.
     while n > 0:
         reversed = (reversed * 10) + (n % 10).
-        n = n / 10.
+        n = n // 10.
     end.
-    give original == reversed.
+    if original == reversed:
+        give true.
+    otherwise:
+        give false.
+    end.
 end.
 
 define is_even needing n:
     note Returns true if n is even.
-    give n % 2 == 0.
+    if n % 2 == 0:
+        give true.
+    otherwise:
+        give false.
+    end.
 end.
 
 define is_odd needing n:
     note Returns true if n is odd.
-    give n % 2 != 0.
+    if n % 2 != 0:
+        give true.
+    otherwise:
+        give false.
+    end.
 end.
 
 define log2_approx needing n:
@@ -283,7 +299,11 @@ note --- Modular Arithmetic ---
 define is_coprime needing a, b:
     note Two numbers are coprime if their GCD is 1.
     g = the result of running gcd with a, b.
-    give g == 1.
+    if g == 1:
+        give true.
+    otherwise:
+        give false.
+    end.
 end.
 
 define mod_pow needing base, exp, mod:
@@ -295,7 +315,7 @@ define mod_pow needing base, exp, mod:
         if r == 1:
             result = (result * base) % mod.
         end.
-        exp = exp / 2.
+        exp = exp // 2.
         base = (base * base) % mod.
     end.
     give result.
@@ -315,14 +335,14 @@ define euler_totient needing n:
     while p * p <= temp:
         if temp % p == 0:
             while temp % p == 0:
-                temp = temp / p.
+                temp = temp // p.
             end.
-            result = result - (result / p).
+            result = result - (result // p).
         end.
         p += 1.
     end.
     if temp > 1:
-        result = result - (result / temp).
+        result = result - (result // temp).
     end.
     give result.
 end.
@@ -341,8 +361,8 @@ define bit_and needing a, b:
                 result = result + place.
             end.
         end.
-        a = a / 2.
-        b = b / 2.
+        a = a // 2.
+        b = b // 2.
         place = place * 2.
     end.
     give result.
@@ -363,8 +383,8 @@ define bit_or needing a, b:
                 result = result + place.
             end.
         end.
-        a = a / 2.
-        b = b / 2.
+        a = a // 2.
+        b = b // 2.
         place = place * 2.
     end.
     give result.
@@ -380,8 +400,8 @@ define bit_xor needing a, b:
         if ra != rb:
             result = result + place.
         end.
-        a = a / 2.
-        b = b / 2.
+        a = a // 2.
+        b = b // 2.
         place = place * 2.
     end.
     give result.
@@ -402,7 +422,7 @@ define count_bits needing n:
     count = 0.
     while n > 0:
         count = count + (n % 2).
-        n = n / 2.
+        n = n // 2.
     end.
     give count.
 end.

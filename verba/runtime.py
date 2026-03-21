@@ -1161,6 +1161,8 @@ class Interpreter:
             if p in evaled_kwargs: call_env.set(p, evaled_kwargs[p], local=True)
             elif i < len(evaled_args): call_env.set(p, evaled_args[i], local=True)
             elif p in fn.defaults: call_env.set(p, fn.defaults[p], local=True)
+            else:
+                raise VerbaRuntimeError(f"Module function {name} missing value for parameter {p}.", line_no=line_no)
         try:
             self._exec_block(fn.body, env=call_env)
         except _ReturnSignal as r:
