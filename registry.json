@@ -25,8 +25,8 @@
       }
     },
     "math_plus": {
-      "latest": "2.0.0",
-      "description": "Advanced Math Utilities including recursive factorial, primality checks, and simplified exponentiation (power function).",
+      "latest": "2.1.0",
+      "description": "Added advanced math utilities",
       "author": "thegitguru",
       "license": "MIT",
       "versions": {
@@ -41,6 +41,10 @@
         "2.0.0": {
           "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v2.0.0.vrb",
           "hash": "312d91eac421a03b4564641b8933cb966799b672c17dc72b12cee876775354df"
+        },
+        "2.1.0": {
+          "url": "https://raw.githubusercontent.com/thegitguru/Verba/main/modules/math_plus_v2.1.0.vrb",
+          "hash": "19e2f33c0cf6ee0bef35c1edaddf945bf9f209180da1138cf77e33eebd8e3e58"
         }
       }
     },

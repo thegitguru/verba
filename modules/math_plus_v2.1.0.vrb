@@ -1,0 +1,227 @@
+note Advanced Math Utilities v1.2.0 for Verba
+
+note --- Core Arithmetic ---
+
+define factorial needing n:
+    note Recursive factorial calculation.
+    if n <= 1:
+        give 1.
+    end.
+    m = n - 1.
+    prev = the result of running factorial with m.
+    give n * prev.
+end.
+
+define is_prime needing n:
+    note Check if n is a prime number.
+    if n <= 1:
+        give false.
+    end.
+    if n == 2:
+        give true.
+    end.
+    i = 2.
+    res = true.
+    while i * i <= n:
+        if n % i == 0:
+            res = false.
+            stop.
+        end.
+        i += 1.
+    end.
+    give res.
+end.
+
+define power needing base, exp:
+    note Raises base to the power of exp.
+    give base ** exp.
+end.
+
+define gcd needing a, b:
+    note Greatest Common Divisor via Euclidean algorithm.
+    while b != 0:
+        t = b.
+        b = a % b.
+        a = t.
+    end.
+    give a.
+end.
+
+define lcm needing a, b:
+    note Least Common Multiple.
+    if a == 0:
+        give 0.
+    end.
+    if b == 0:
+        give 0.
+    end.
+    g = the result of running gcd with a, b.
+    val = (a * b) / g.
+    give val.
+end.
+
+define fibonacci needing n:
+    note Returns the Nth Fibonacci number.
+    if n <= 1:
+        give n.
+    end.
+    a = 0.
+    b = 1.
+    count = n - 1.
+    repeat count times:
+        t = a + b.
+        a = b.
+        b = t.
+    end.
+    give b.
+end.
+
+define deg_to_rad needing deg:
+    note Converts degrees to radians.
+    pi = 3.141592653589793.
+    give deg * (pi / 180).
+end.
+
+define rad_to_deg needing rad:
+    note Converts radians to degrees.
+    pi = 3.141592653589793.
+    give rad * (180 / pi).
+end.
+
+note --- Number Theory ---
+
+define is_perfect needing n:
+    note A perfect number equals the sum of its proper divisors.
+    if n <= 1:
+        give false.
+    end.
+    total = 1.
+    i = 2.
+    while i * i <= n:
+        if n % i == 0:
+            total = total + i.
+            q = n / i.
+            if q != i:
+                total = total + q.
+            end.
+        end.
+        i += 1.
+    end.
+    if total == n:
+        give true.
+    otherwise:
+        give false.
+    end.
+end.
+
+define digits_sum needing n:
+    note Returns the sum of digits of n.
+    total = 0.
+    while n > 0:
+        total = total + (n % 10).
+        n = n / 10.
+    end.
+    give total.
+end.
+
+define is_palindrome needing n:
+    note Checks if n reads the same forwards and backwards.
+    original = n.
+    reversed = 0.
+    while n > 0:
+        reversed = (reversed * 10) + (n % 10).
+        n = n / 10.
+    end.
+    if original == reversed:
+        give true.
+    otherwise:
+        give false.
+    end.
+end.
+
+note --- Combinatorics ---
+
+define permutations needing n, r:
+    note Number of ordered arrangements of r items from n.
+    if r > n:
+        give 0.
+    end.
+    num = the result of running factorial with n.
+    denom = the result of running factorial with (n - r).
+    give num / denom.
+end.
+
+define combinations needing n, r:
+    note Number of unordered selections of r items from n. Also known as nCr.
+    if r > n:
+        give 0.
+    end.
+    num = the result of running factorial with n.
+    d1 = the result of running factorial with r.
+    d2 = the result of running factorial with (n - r).
+    give num / (d1 * d2).
+end.
+
+note --- Statistics ---
+
+define mean needing total, count:
+    note Arithmetic mean given a running total and item count.
+    if count == 0:
+        give 0.
+    end.
+    give total / count.
+end.
+
+define variance needing sum_sq, total, count:
+    note Population variance: E[x^2] - (E[x])^2.
+    if count == 0:
+        give 0.
+    end.
+    avg = total / count.
+    give (sum_sq / count) - (avg * avg).
+end.
+
+define std_dev needing sum_sq, total, count:
+    note Population standard deviation.
+    v = the result of running variance with sum_sq, total, count.
+    give v ** 0.5.
+end.
+
+note --- Geometry ---
+
+define hypotenuse needing a, b:
+    note Length of the hypotenuse given two legs.
+    give (a * a + b * b) ** 0.5.
+end.
+
+define circle_area needing r:
+    note Area of a circle given radius.
+    pi = 3.141592653589793.
+    give pi * r * r.
+end.
+
+define circle_perimeter needing r:
+    note Circumference of a circle given radius.
+    pi = 3.141592653589793.
+    give 2 * pi * r.
+end.
+
+define rect_area needing w, h:
+    note Area of a rectangle.
+    give w * h.
+end.
+
+define rect_perimeter needing w, h:
+    note Perimeter of a rectangle.
+    give 2 * (w + h).
+end.
+
+define triangle_area needing base, height:
+    note Area of a triangle given base and height.
+    give (base * height) / 2.
+end.
+
+define triangle_perimeter needing a, b, c:
+    note Perimeter of a triangle given all three sides.
+    give a + b + c.
+end.
