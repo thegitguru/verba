@@ -105,75 +105,61 @@
             <p class="lead" style="margin: 0 auto 3rem auto; text-align: center;">Enhance your Verba projects with powerful externally maintained modules. Secure, versioned, and easy to install.</p>
         </header>
 
-        <div class="package-grid">
-            <!-- Math Plus -->
-            <div class="package-card">
-                <div class="pkg-header">
-                    <h3 class="pkg-name">math_plus</h3>
-                    <span class="pkg-version">v1.4.0</span>
-                </div>
-                <div class="pkg-meta">
-                    <span><strong>Author:</strong> thegitguru</span>
-                    <span><strong>License:</strong> MIT</span>
-                </div>
-                <p class="pkg-desc">Browse and import utilities for math, logic, and more, all built in Verba's natural sentence-based style. No symbols, no surprises — just code that makes sense.</p>
-                <div class="install-box">
-                    <span class="install-cmd">verba install math_plus</span>
-                </div>
-                <div class="hash-detail">SHA256: 4b3d61df8138d11ec822d0060...</div>
-            </div>
-
-            <!-- String Box -->
-            <div class="package-card">
-                <div class="pkg-header">
-                    <h3 class="pkg-name">string_box</h3>
-                    <span class="pkg-version">v1.0.0</span>
-                </div>
-                <div class="pkg-meta">
-                    <span><strong>Author:</strong> thegitguru</span>
-                    <span><strong>License:</strong> MIT</span>
-                </div>
-                <p class="pkg-desc">Fancy string formatting utilities to draw ASCII boxes and headers in terminal applications.</p>
-                <div class="install-box">
-                    <span class="install-cmd">verba install string_box</span>
-                </div>
-                <div class="hash-detail">SHA256: 87deecf9...</div>
-            </div>
-
-            <!-- Date Helper -->
-            <div class="package-card">
-                <div class="pkg-header">
-                    <h3 class="pkg-name">date_helper</h3>
-                    <span class="pkg-version">v1.0.0</span>
-                </div>
-                <div class="pkg-meta">
-                    <span><strong>Author:</strong> thegitguru</span>
-                    <span><strong>License:</strong> MIT</span>
-                </div>
-                <p class="pkg-desc">Simplify date formatting and perform human-friendly time checks like weekend detection.</p>
-                <div class="install-box">
-                    <span class="install-cmd">verba install date_helper</span>
-                </div>
-                <div class="hash-detail">SHA256: 9ef47082...</div>
-            </div>
-
-            <!-- Test Pkg -->
-            <div class="package-card">
-                <div class="pkg-header">
-                    <h3 class="pkg-name">test_pkg</h3>
-                    <span class="pkg-version">v1.0.0</span>
-                </div>
-                <div class="pkg-meta">
-                    <span><strong>Author:</strong> thegitguru</span>
-                    <span><strong>License:</strong> MIT</span>
-                </div>
-                <p class="pkg-desc">Standard test package used for verifying Verba installations and module imports.</p>
-                <div class="install-box">
-                    <span class="install-cmd">verba install test_pkg</span>
-                </div>
-                <div class="hash-detail">SHA256: 112517c7...</div>
+        <div class="package-grid" id="package-grid">
+            <div class="package-card" style="grid-column: 1 / -1; text-align: center; padding: 4rem;">
+                <p style="color: rgba(255,255,255,0.6);">Loading community modules from registry...</p>
             </div>
         </div>
+
+        <script>
+            async function fetchPackages() {
+                const REGISTRY_URL = 'https://raw.githubusercontent.com/thegitguru/verba-packages/refs/heads/main/registry.json';
+                const grid = document.getElementById('package-grid');
+                
+                try {
+                    const response = await fetch(REGISTRY_URL);
+                    const data = await response.json();
+                    const packages = data.packages;
+                    
+                    grid.innerHTML = ''; // Clear loading
+                    
+                    for (const [name, info] of Object.entries(packages)) {
+                        const latestVer = info.latest;
+                        const versionInfo = info.versions[latestVer];
+                        const hash = versionInfo.hash || 'N/A';
+                        
+                        const card = document.createElement('div');
+                        card.className = 'package-card reveal';
+                        card.innerHTML = `
+                            <div class="pkg-header">
+                                <h3 class="pkg-name">${name}</h3>
+                                <span class="pkg-version">v${latestVer}</span>
+                            </div>
+                            <div class="pkg-meta">
+                                <span><strong>Author:</strong> ${info.author || 'thegitguru'}</span>
+                                <span><strong>License:</strong> ${info.license || 'MIT'}</span>
+                            </div>
+                            <p class="pkg-desc">${info.description}</p>
+                            <div class="install-box">
+                                <span class="install-cmd">verba install ${name}</span>
+                            </div>
+                            <div class="hash-detail">SHA256: ${hash.substring(0, 16)}${hash.length > 16 ? '...' : ''}</div>
+                        `;
+                        grid.appendChild(card);
+                        if (window.observer) window.observer.observe(card);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch packages:', error);
+                    grid.innerHTML = `
+                        <div class="package-card" style="grid-column: 1 / -1; text-align: center; padding: 4rem; border-color: rgba(255,0,0,0.3);">
+                            <p style="color: #ff6b6b;">Failed to load registry. Please check your connection.</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            window.addEventListener('DOMContentLoaded', fetchPackages);
+        </script>
 
         <section class="section" style="margin-top: 60px;">
             <h2>How to Publish?</h2>

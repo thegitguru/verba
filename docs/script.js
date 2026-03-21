@@ -80,7 +80,7 @@ const observerOptions = {
     threshold: 0.1
 };
 
-const observer = new IntersectionObserver((entries) => {
+const observer = window.observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             entry.target.classList.add('reveal');
@@ -89,8 +89,8 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, observerOptions);
 
-document.querySelectorAll('.section').forEach(section => {
-    observer.observe(section);
+document.querySelectorAll('.section, .package-card').forEach(el => {
+    observer.observe(el);
 });
 
 // Mobile Sidebar Toggle
