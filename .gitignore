@@ -4,6 +4,7 @@ out.txt
 run_examples.txt
 verba_lang.egg-info/
 publisher/
+release/
 
 # webapp runtime data
 examples/webapp/todos.txt
