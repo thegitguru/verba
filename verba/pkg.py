@@ -9,7 +9,7 @@ import threading
 import hashlib
 
 
-DEFAULT_REGISTRY_URL = "https://raw.githubusercontent.com/thegitguru/Verba/main/registry.json"
+DEFAULT_REGISTRY_URL = "https://raw.githubusercontent.com/thegitguru/verba-packages/main/registry.json"
 
 
 class Spinner:
@@ -54,15 +54,7 @@ def fetch_registry() -> dict:
             print(f"Error reading local registry {registry_url}: {e}")
             return {}
             
-    if result is None:
-        # Local hardcoded fallback for development convenience
-        local_dev_reg = r"d:\GitHub\Verba\registry.json"
-        if registry_url == DEFAULT_REGISTRY_URL and os.path.isfile(local_dev_reg):
-            try:
-                with open(local_dev_reg, "r", encoding="utf-8") as f:
-                    result = json.load(f)
-            except Exception:
-                pass # Fallback to web request
+    # Check if a global or local registry is specified, otherwise fetch from source
                 
     if result is None:
         with Spinner(f"Fetching registry from {registry_url}..."):
@@ -122,13 +114,6 @@ def download_package(name: str, url: str, expected_hash: str = "") -> tuple[bool
 
     success = False
     err_msg = ""
-    # Local dev override for package downloads (redirect to local disk if path exists)
-    if content is None and "raw.githubusercontent.com/thegitguru/Verba/main/" in url:
-        relative_path = url.split("raw.githubusercontent.com/thegitguru/Verba/main/")[1]
-        local_dev_path = Path(r"d:\GitHub\Verba") / relative_path.replace("/", os.sep)
-        if local_dev_path.exists():
-            content = local_dev_path.read_bytes()
-            print(f"🛠️  Developer Override: Using local file {local_dev_path}")
 
     if content is None:
         with Spinner(f"Installing {pkg_filename} from {url}..."):
