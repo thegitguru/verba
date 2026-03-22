@@ -221,9 +221,27 @@ unless name == "Alice":
 end.
 ```
 
-**Comparison operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`, `is null`, `is not null`, `is some`, `is not some`, `is none`, `is not none`, `in`, `not in`
+**Comparison operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`, `is null`, `is not null`, `is some`, `is not some`, `is none`, `is not none`, `is number`, `is word`, `is flag`, `in`, `not in`
 
 **Aliases:** `is` → `==`, `is not` → `!=`, `is greater than` → `>`, `is less than` → `<`, `is at least` → `>=`, `is at most` → `<=`, `does not equal` → `!=`
+
+### Pattern Matching
+
+Verba supports deep pattern matching with `match` and `when`. Branches end with `:`, and trailing periods are optional.
+
+```verba
+match val:
+    when 1: say "Exactly one".
+    when is number: say "Any other number".
+    when "Verba": say "Matches a word".
+    when { "type": "human", "name": _ }: say "Matched a map".
+    when [1, _, 3]: say "Matched a list".
+    when _: say "Wildcard fallback".
+    else: say "Else block".
+end.
+```
+
+Supported types for `is`: `number`, `word`, `flag`, `list`, `map`, `none`, `some`.
 
 ### Logical Operators
 
@@ -639,6 +657,25 @@ end.
 task = async run fetch_data.
 await result = task.
 say result.
+```
+
+---
+
+## 🧵 Parallel Programming
+
+Spawn separate OS processes for CPU-intensive tasks.
+
+```verba
+define compute needing n:
+    /- Heavy CPU work...
+    give n * n.
+end.
+
+parallel run compute with 1000 and save to task_p.
+say "Task is running in another process!".
+
+join result = task_p.
+say "Result: ", result.
 ```
 
 ---
