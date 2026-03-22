@@ -22,6 +22,17 @@ class Literal(Expr):
 
 
 @dataclass(frozen=True)
+class SomeLiteral(Expr):
+    span: Span
+    value: Expr
+
+
+@dataclass(frozen=True)
+class NoneLiteral(Expr):
+    span: Span
+
+
+@dataclass(frozen=True)
 class VarRef(Expr):
     span: Span
     name: str

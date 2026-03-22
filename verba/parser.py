@@ -48,6 +48,7 @@ from .ast import (
     LoadFile,
     MultiAssign,
     Note,
+    NoneLiteral,
     Repeat,
     Run,
     SaveToFile,
@@ -55,6 +56,7 @@ from .ast import (
     SetVar,
     Span,
     Stmt,
+    SomeLiteral,
     Test,
     Unless,
     VarRef,
@@ -123,6 +125,10 @@ def _join_name(tokens: list[Token], *, line_no: int = 0) -> str:
 
 
 _COMPARISONS: list[tuple[list[str], str]] = [
+    (["is", "not", "some"], "!some"),
+    (["is", "some"], "some"),
+    (["is", "not", "none"], "!none"),
+    (["is", "none"], "none"),
     (["is", "not", "null"], "!null"),
     (["is", "null"], "null"),
     (["not", "in"], "!in"),
@@ -193,6 +199,13 @@ def _parse_atom(tokens: list[Token], tokens_lc: list[str], i: int, *, span: Span
         return Literal(span, False), i + 1
     if tl == "null":
         return Literal(span, None), i + 1
+    if tl == "none":
+        return NoneLiteral(span), i + 1
+    if tl == "some":
+        if i + 1 >= len(tokens):
+            raise VerbaParseError("I expected a value after 'some'.", line_no=span.line_no, col=t.col, line=t.raw_line)
+        inner = parse_expr(tokens[i + 1 :], line_no=span.line_no)
+        return SomeLiteral(span, inner), len(tokens)
 
     # &x  — concise ref
     if t.value == "&" and i + 1 < len(tokens):
@@ -577,8 +590,8 @@ def parse_condition(tokens: list[Token], *, line_no: int) -> BoolExpr:
             if not left_tokens:
                 break
 
-            # null / !null comparisons have no right-hand side
-            if op in ("null", "!null"):
+            # null / option-state comparisons have no right-hand side
+            if op in ("null", "!null", "some", "!some", "none", "!none"):
                 left = parse_expr(left_tokens, line_no=line_no)
                 return Compare(span, op, left, Literal(span, None)), next_k
 

@@ -1,0 +1,21 @@
+/- Option types and null-safety in Verba.
+
+name = some "Verba".
+missing = none.
+
+if name is some:
+    safe_name = the result of running name.unwrap.
+    say "Resolved name: ", safe_name.
+end.
+
+fallback = the result of running missing.unwrap_or with "Anonymous".
+say "Fallback name: ", fallback.
+
+if missing is none:
+    say "No optional value was present.".
+end.
+
+nullable_ptr = null.
+if nullable_ptr is null:
+    say "Pointers can still use null checks.".
+end.

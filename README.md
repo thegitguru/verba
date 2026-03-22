@@ -95,7 +95,43 @@ quotient = 10 / 3.
 modulo = 10 % 3.
 power = 2 ** 8.
 floor_div = 10 // 3.    /- integer (floor) division
+maybe_name = some "Verba".
+missing_name = none.
 ```
+
+### Null Safety & Option Types
+
+Verba now supports first-class option values for places where a value may or may not exist.
+
+```verba
+name = some "Verba".
+missing = none.
+
+if name is some:
+    safe_name = the result of running name.unwrap.
+    say "Resolved name: ", safe_name.
+end.
+
+fallback = the result of running missing.unwrap_or with "Anonymous".
+say fallback.
+```
+
+Use these checks:
+
+- `is some`
+- `is not some`
+- `is none`
+- `is not none`
+- `is null`
+- `is not null`
+
+Use these Option methods:
+
+- `option.is_some`
+- `option.is_none`
+- `option.unwrap`
+- `option.unwrap_or`
+- `option.or_else`
 
 ### String Interpolation
 
@@ -158,7 +194,7 @@ unless name == "Alice":
 end.
 ```
 
-**Comparison operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`, `is null`, `is not null`, `in`, `not in`
+**Comparison operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`, `is null`, `is not null`, `is some`, `is not some`, `is none`, `is not none`, `in`, `not in`
 
 **Aliases:** `is` → `==`, `is not` → `!=`, `is greater than` → `>`, `is less than` → `<`, `is at least` → `>=`, `is at most` → `<=`, `does not equal` → `!=`
 
@@ -950,6 +986,7 @@ verba/
 | `examples/full_example.vrb` | Functions, loops, user input |
 | `examples/lists_and_loops.vrb` | Lists, add/remove, for-each |
 | `examples/advanced.vrb` | Classes, async, fetch, file I/O |
+| `examples/options.vrb` | Option values, unwrap, unwrap_or, and null-safety checks |
 | `examples/pointers.vrb` | References, deref, pass-by-reference |
 | `examples/file_io.vrb` | Save, load, append, delete files |
 | `examples/use_http.vrb` | HTTP GET, POST, error handling |

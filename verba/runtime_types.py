@@ -42,6 +42,44 @@ class Instance:
         self.cls = cls
         self.props = {}
 
+
+class OptionValue:
+    def __init__(self, value: Any = None, *, has_value: bool = False):
+        self.value = value
+        self.has_value = has_value
+        self.cls = None
+        self.props = {
+            "is_some": has_value,
+            "is_none": not has_value,
+            "value": value if has_value else None,
+        }
+
+    @classmethod
+    def some(cls, value: Any) -> "OptionValue":
+        return cls(value, has_value=True)
+
+    @classmethod
+    def none(cls) -> "OptionValue":
+        return cls(None, has_value=False)
+
+    def __bool__(self) -> bool:
+        return self.has_value
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, OptionValue):
+            return False
+        return self.has_value == other.has_value and self.value == other.value
+
+    def __repr__(self) -> str:
+        if self.has_value:
+            return f"some({self.value!r})"
+        return "none"
+
+    def __str__(self) -> str:
+        if self.has_value:
+            return f"some({self.value})"
+        return "none"
+
 @dataclass
 class NativeFunction:
     name: str

@@ -8,7 +8,7 @@ from .errors import VerbaRuntimeError
 
 
 from .runtime_types import (
-    Pointer, Function, ClassObj, Instance, NativeFunction, NativeInstance, Environment, Module,
+    Pointer, Function, ClassObj, Instance, NativeFunction, NativeInstance, Environment, Module, OptionValue,
     _ReturnSignal, _BreakSignal, _ContinueSignal, _RespondSignal, _RedirectSignal, _VerbaRequest
 )
 
@@ -868,6 +868,12 @@ class Interpreter:
             obj = env.get(e.obj_name) if env.contains(e.obj_name) else None
             return self._call_method(obj, e.method, e.args, e.kwargs, caller_env=env, line_no=ln)
 
+        if isinstance(e, ast.SomeLiteral):
+            return OptionValue.some(self._eval_expr(e.value, env=env, context="general"))
+
+        if isinstance(e, ast.NoneLiteral):
+            return OptionValue.none()
+
         if isinstance(e, ast.StringConcat):
             return "".join(self._to_word(self._eval_expr(p, env=env, context="say")) for p in e.parts)
 
@@ -959,6 +965,15 @@ class Interpreter:
             for prop_part in e.prop.split("."):
                 if isinstance(obj, NativeInstance):
                     obj = obj.props.get(prop_part)
+                elif isinstance(obj, OptionValue):
+                    if prop_part == "value":
+                        obj = obj.value if obj.has_value else None
+                    elif prop_part == "is_some":
+                        obj = obj.has_value
+                    elif prop_part == "is_none":
+                        obj = not obj.has_value
+                    else:
+                        raise VerbaRuntimeError(f"Option has no property called '{prop_part}'.", line_no=ln)
                 elif isinstance(obj, dict):
                     obj = obj.get(prop_part)
                 elif isinstance(obj, (Instance, _VerbaRequest, Module)):
@@ -1071,6 +1086,14 @@ class Interpreter:
         if isinstance(b, ast.Compare):
             left = self._eval_expr(b.left, env=env, context="general")
             right = self._eval_expr(b.right, env=env, context="general")
+            if b.op == "some":
+                return isinstance(left, OptionValue) and left.has_value
+            if b.op == "!some":
+                return not (isinstance(left, OptionValue) and left.has_value)
+            if b.op == "none":
+                return isinstance(left, OptionValue) and not left.has_value
+            if b.op == "!none":
+                return not (isinstance(left, OptionValue) and not left.has_value)
             if b.op == "null":
                 return left is None
             if b.op == "!null":
@@ -1170,6 +1193,8 @@ class Interpreter:
         return None
 
     def _call_method(self, obj: Any, name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
+        if isinstance(obj, OptionValue):
+            return self._call_option_method(obj, name, args, kwargs, caller_env=caller_env, line_no=line_no)
         if isinstance(obj, NativeInstance):
             return self._call_native_method(obj, name, args, kwargs, caller_env=caller_env, line_no=line_no)
         if isinstance(obj, Module):
@@ -1235,6 +1260,28 @@ class Interpreter:
             return ni
         return result if result is not None else ""
 
+    def _call_option_method(self, obj: OptionValue, method_name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
+        evaled_args = [self._eval_expr(a, env=caller_env, context="general") for a in args]
+        if method_name == "is_some":
+            return obj.has_value
+        if method_name == "is_none":
+            return not obj.has_value
+        if method_name == "unwrap":
+            if not obj.has_value:
+                raise VerbaRuntimeError("Cannot unwrap an empty option.", line_no=line_no)
+            return obj.value
+        if method_name == "unwrap_or":
+            if obj.has_value:
+                return obj.value
+            return evaled_args[0] if evaled_args else None
+        if method_name == "or_else":
+            if obj.has_value:
+                return obj
+            if not evaled_args:
+                raise VerbaRuntimeError("option.or_else needs a fallback value.", line_no=line_no)
+            return OptionValue.some(evaled_args[0])
+        raise VerbaRuntimeError(f"Option has no method called {method_name}.", line_no=line_no)
+
 
     def _to_number(self, v: Any, line_no: int) -> float:
         if isinstance(v, bool):
@@ -1251,6 +1298,10 @@ class Interpreter:
     def _to_word(self, v: Any) -> str:
         if v is None:
             return ""
+        if isinstance(v, OptionValue):
+            if v.has_value:
+                return f"some({self._to_word(v.value)})"
+            return "none"
         if isinstance(v, str):
             return v
         if isinstance(v, bool):
@@ -1264,6 +1315,10 @@ class Interpreter:
     def _format_value(self, v: Any) -> str:
         if isinstance(v, Pointer):
             return repr(v)
+        if isinstance(v, OptionValue):
+            if v.has_value:
+                return f"some({self._format_value(v.value)})"
+            return "none"
         if isinstance(v, bool):
             return "true" if v else "false"
         if v is None:
