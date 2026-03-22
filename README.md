@@ -572,18 +572,21 @@ res = the result of running compute with 10.
 
 ## 📦 Modules & Namespaces
 
+Verba supports a flexible import syntax for reusing code from other `.vrb` files.
+
 ```verba
-/- import a .vrb file (executed in a fresh scope)
-import from file called "my_module.vrb" as mh.
+/- Flexible import styles
+import math.                /- Direct inclusion (include)
+import math as m.            /- Import with alias
+import from "utils.vrb" as u. /- String-based path
+import from file called "lib.vrb" as L. /- Verbose style (Legacy)
 
-/- call imported functions
-result = the result of running mh.multiply_things with 3, 4.
-
-/- access imported variables
-say mh.version.
+/- Accessing imported members
+say m.factorial(5).
+say result = matching with u.calc(10, 20).
 ```
 
-Modules are placed in the `modules/` folder and loaded by name.
+Modules are automatically searched for in the current directory and the `modules/` folder of your project. If the `.vrb` extension is omitted, it is added automatically.
 
 ---
 

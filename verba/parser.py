@@ -960,18 +960,45 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         return FreeVar(span, _join_name(tokens[1:], line_no=line_no))
 
     if first_val == "import":
-        # import from file called [filename] [as alias].
-        if tokens_lc[1:4] != ["from", "file", "called"]:
-            raise VerbaParseError("An import line must say 'import from file called'.", line_no=line_no, col=tokens[0].col + len(tokens[0].value), line=lt.raw)
+        # Supports:
+        # 1. import from file called "foo.vrb" as f.
+        # 2. import from "foo.vrb" as f.
+        # 3. import "foo.vrb" as f.
+        # 4. import foo as f.
+        
+        start = 1
+        if len(tokens_lc) > 1 and tokens_lc[1] == "from":
+            if len(tokens_lc) > 3 and tokens_lc[2:4] == ["file", "called"]:
+                start = 4
+            else:
+                start = 2
         
         alias = None
         if "as" in tokens_lc:
-            as_i = tokens_lc.index("as")
-            filename_expr = parse_expr(tokens[4:as_i], line_no=line_no)
-            alias = _join_name(tokens[as_i+1:], line_no=line_no)
+            try:
+                as_i = tokens_lc.index("as", start)
+                filename_part = tokens[start:as_i]
+                alias = _join_name(tokens[as_i+1:], line_no=line_no)
+                # Remove trailing period from alias if any
+                if alias.endswith("."): alias = alias[:-1]
+            except ValueError:
+                filename_part = tokens[start:]
         else:
-            filename_expr = parse_expr(tokens[4:], line_no=line_no)
+            filename_part = tokens[start:]
             
+        if not filename_part:
+            raise VerbaParseError("I expected a filename after 'import'.", line_no=line_no)
+            
+        # Remove trailing period from last filename token if present
+        if filename_part[-1].value == ".":
+            filename_part = filename_part[:-1]
+            
+        # Bare word support: import math. -> treated as Literal("math")
+        if len(filename_part) == 1 and not (filename_part[0].value.startswith('"') or filename_part[0].value.startswith("'")):
+             filename_expr = Literal(span, filename_part[0].value)
+        else:
+             filename_expr = parse_expr(filename_part, line_no=line_no)
+             
         cur.i += 1
         return Import(span, filename_expr, alias)
 
