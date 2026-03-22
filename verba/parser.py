@@ -4,92 +4,19 @@ from dataclasses import dataclass
 from typing import Optional
 
 from .ast import (
-    Assert,
-    Ask,
-    Match,
-    Help,
-    MatchBranch,
-    BinaryOp,
-    Constant,
-    BoolAnd,
-    BoolExpr,
-    BoolNot,
-    BoolOr,
-    Compare,
-    Define,
-    Decrease,
-    Expr,
-    ForEach,
-    ForEachIndexed,
-    ForRange,
-    GiveBack,
-    If,
-    Increase,
-    EnumDef,
-    Let,
-    LetResultOfRun,
-    Literal,
-    ListAdd,
-    ListItemGet,
-    ListLiteral,
-    ListRemove,
-    ListSlice,
-    ListSort,
-    ListComprehension,
-    MapLiteral,
-    MapComprehension,
-    WithStmt,
-    ListLength,
-    MatchPattern,
-    ValuePattern,
-    VariablePattern,
-    ListPattern,
-    MapPattern,
-    BoolExprFromExpr,
-    LoadFile,
-    MultiAssign,
-    Note,
-    NoneLiteral,
-    Repeat,
-    Run,
-    SaveToFile,
-    Say,
-    SetVar,
-    Span,
-    Stmt,
-    SomeLiteral,
-    Test,
-    Unless,
-    VarRef,
-    While,
-    TryBlock,
-    Import,
-    AppendToFile,
-    DeleteFile,
-    FetchUrl,
-    FreeVar,
-    Test,
-    Yield,
-    ClassDef,
-    ObjectNew,
-    ObjectPropGet,
-    ObjectPropSet,
-    MethodCall,
-    LetResultOfMethod,
-    AsyncDefine,
-    AsyncRun,
-    AwaitStmt,
-    Ref,
-    Deref,
-    DerefSet,
-    Break,
-    Continue,
-    Raise,
-    ServeStart,
-    ServeRoute,
-    ServeRespond,
-    ServeRedirect,
-    StringConcat,
+    Assert, Ask, Match, Help, MatchBranch, BinaryOp, Constant, BoolAnd, BoolExpr,
+    BoolNot, BoolOr, Compare, Define, Decrease, Expr, ForEach, ForEachIndexed,
+    ForRange, GiveBack, If, Increase, EnumDef, Let, LetResultOfRun, Literal,
+    ListAdd, ListItemGet, ListLiteral, ListRemove, ListSlice, ListSort,
+    ListComprehension, MapLiteral, MapComprehension, WithStmt, ListLength,
+    MatchPattern, ValuePattern, VariablePattern, ListPattern, MapPattern,
+    BoolExprFromExpr, LoadFile, MultiAssign, Note, NoneLiteral, Repeat, Run,
+    SaveToFile, Say, SetVar, Span, Stmt, SomeLiteral, Unless, VarRef, While,
+    TryBlock, Import, AppendToFile, DeleteFile, FetchUrl, FreeVar, Test, Yield,
+    ClassDef, ObjectNew, ObjectPropGet, ObjectPropSet, MethodCall,
+    LetResultOfMethod, AsyncDefine, AsyncRun, AwaitStmt, Ref, Deref, DerefSet,
+    Break, Continue, Raise, ServeStart, ServeRoute, ServeRespond, ServeRedirect,
+    StringConcat, ParallelRun, JoinStmt, WildcardPattern, TypePattern
 )
 from .errors import VerbaParseError
 from .tokenize import LineTokens, tokenize_program, Token
@@ -790,10 +717,12 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         "repeat", "define", "async", "run", "let", "set", "increase", "constant",
         "decrease", "save", "load", "import", "class", "free", "delete",
         "fetch", "append", "note", "try", "otherwise", "else", "end", "give", "return",
-        "await", "deref", "serve", "on", "respond", "stop", "skip", "assert", "match", "raise"
+        "await", "deref", "serve", "on", "respond", "stop", "skip", "assert", "match", "raise",
+        "parallel", "join"
     }
     is_keyword_stmt = first_val in _STATEMENT_KEYWORDS
-
+    is_async = (first_val == "async")
+    
     if first_val == "await":
         if "=" in tokens_lc:
             eq_i = tokens_lc.index("=")
@@ -1374,7 +1303,6 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             if wl.indent < inner_indent:
                 break
             wl_lc = _lc(wl.tokens)
-            _require_period(wl, wl_no)
             if wl_lc[0] in ("when", "on"):
                 # when/on <pattern>: ...
                 if wl.tokens[-1].value != ":":
@@ -1487,14 +1415,13 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
         return Help(span, topic)
 
     # run function ...
-    if first_val == "run":
+    if first_val == "run" and not is_async:
         _require_period(lt, line_no)
         if "with" in tokens_lc:
             with_i = tokens_lc.index("with")
             fn = _join_name(tokens[1:with_i], line_no=line_no)
             parts = _split_by_commas(tokens[with_i + 1 :])
-            args = []
-            kwargs = {}
+            args, kwargs = [], {}
             for p in parts:
                 if not p: continue
                 # check for k=v
@@ -1515,9 +1442,54 @@ def _parse_statement(cur: _Cursor, *, expected_indent: int) -> Optional[Stmt]:
             
         cur.i += 1
         if "." in fn:
-            parts = fn.split(".")
-            return MethodCall(span, parts[0], parts[1], args, kwargs)
+            p = fn.split(".")
+            return MethodCall(span, p[0], p[1], args, kwargs)
         return Run(span, fn, args, kwargs)
+
+    # parallel run <fn> [with <args>] and save to <target>
+    if first_val == "parallel":
+        _require_period(lt, line_no)
+        if len(tokens) > 1 and tokens[1].value.lower() == "run":
+            save_i = tokens_lc.index("save") if "save" in tokens_lc else -1
+            if save_i == -1:
+                raise VerbaParseError("Parallel run must say 'and save to <variable>'.", line_no=line_no)
+            
+            # handle 'and save to'
+            and_save_i = tokens_lc.index("and") if "and" in tokens_lc[:save_i] else -1
+            with_i = tokens_lc.index("with") if "with" in tokens_lc else -1
+            
+            if with_i != -1 and with_i < save_i:
+                fn = _join_name(tokens[2:with_i], line_no=line_no)
+                args_tokens = tokens[with_i+1:and_save_i if and_save_i != -1 else save_i]
+                parts = _split_by_commas(args_tokens)
+                args = [parse_expr(p, line_no=line_no) for p in parts if p]
+            else:
+                fn = _join_name(tokens[2:and_save_i if and_save_i != -1 else save_i], line_no=line_no)
+                args = []
+            
+            to_i = tokens_lc.index("to") if "to" in tokens_lc[save_i:] else -1
+            if to_i != -1:
+                target = _join_name(tokens[to_i+1:], line_no=line_no)
+            else:
+                target = _join_name(tokens[save_i+1:], line_no=line_no)
+                
+            cur.i += 1
+            return ParallelRun(span, target, fn, args)
+        
+    # join <target> = <process_var>
+    if first_val == "join":
+        _require_period(lt, line_no)
+        if "=" in tokens_lc:
+            eq_i = tokens_lc.index("=")
+            target = _join_name(tokens[1:eq_i], line_no=line_no)
+            process = _join_name(tokens[eq_i+1:], line_no=line_no)
+            cur.i += 1
+            return JoinStmt(span, target, process)
+        else:
+            # Maybe it's StringConcat (if used as expr? No, this is _exec_stmt)
+            # StringConcat is handled in parse_expr.
+            # But here we are in _exec_stmt, so it must be a join statement.
+            raise VerbaParseError("Join statement must be 'join <target> = <process>'.", line_no=line_no)
 
 # deref ptr = expr.  — write through pointer (concise)
     if first_val == "deref" and "=" in tokens_lc:
@@ -1736,11 +1708,19 @@ def _parse_pattern(tokens: list[Token], line_no: int) -> MatchPattern:
             pairs.append((raw_key, pat))
         return MapPattern(span, pairs)
     
+    # any / _ -> WildcardPattern
+    if len(tokens) == 1 and tokens[0].value.lower() in ("any", "_"):
+        return WildcardPattern(span)
+
+    # is <type> -> TypePattern
+    if len(tokens) == 2 and tokens[0].value.lower() == "is":
+        return TypePattern(span, tokens[1].value.lower())
+
     # if it's a single word and not a literal -> VariablePattern
     if len(tokens) == 1:
         val = tokens[0].value
         low = val.lower()
-        if "." in val or low in ("true", "false", "null") or val.startswith('"') or val.startswith("'") or _parse_number(val) is not None:
+        if "." in val or low in ("true", "false", "null", "none") or val.startswith('"') or val.startswith("'") or _parse_number(val) is not None:
             return ValuePattern(span, parse_expr(tokens, line_no=line_no))
         return VariablePattern(span, low)
 

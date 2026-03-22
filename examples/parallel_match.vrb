@@ -1,0 +1,45 @@
+define heavy_task needing n:
+    say "Starting heavy task for ", n.
+    /- Simulate some work
+    count = 0.
+    repeat n times:
+        count = count + 1.
+    end.
+    give count.
+end.
+
+say "--- Testing Parallelism ---".
+parallel run heavy_task with 1000000 and save to t1.
+parallel run heavy_task with 2000000 and save to t2.
+
+say "Parallel tasks started. Waiting for results...".
+join result1 = t1.
+join result2 = t2.
+
+say "Result 1: ", result1.
+say "Result 2: ", result2.
+
+say "--- Testing Enhanced Pattern Matching ---".
+define test_match needing val:
+    match val:
+        when is number:
+            say val, " is a number".
+        when is word:
+            say val, " is a word (string)".
+        when [is number, is word]:
+            say "Matched a specific list: ", val.
+        when { "type": "human", "name": _ }:
+            say "Matched a map with 'type': 'human' and a wildcard name".
+        when is flag:
+            say val, " is a boolean".
+        when _:
+            say "Universal fallback matched: ", val.
+    end.
+end.
+
+run test_match with 42.
+run test_match with "Verba".
+run test_match with [100, "points"].
+run test_match with { "type": "human", "name": "Bob" }.
+run test_match with true.
+run test_match with none.

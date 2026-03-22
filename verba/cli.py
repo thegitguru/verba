@@ -4,16 +4,11 @@ import argparse
 import sys
 from pathlib import Path
 
-try:
-    from .errors import VerbaError, VerbaParseError, VerbaRuntimeError
-    from .parser import parse
-    from .runtime import Interpreter
-    from . import pkg
-except ImportError:
-    from errors import VerbaError, VerbaParseError, VerbaRuntimeError
-    from parser import parse
-    from runtime import Interpreter
-    import pkg
+from .errors import VerbaError, VerbaParseError, VerbaRuntimeError
+from .parser import parse
+from .runtime import Interpreter
+from . import pkg
+
 import time
 import os
 

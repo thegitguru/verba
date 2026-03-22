@@ -774,6 +774,38 @@ class Interpreter:
             env.set(s.target_name, task)
             threading.Thread(target=_async_worker).start()
             return
+
+        if isinstance(s, ast.ParallelRun):
+            from multiprocessing import Process, Queue
+            fn_def = env.get_function(s.func_name)
+            if not fn_def:
+                raise VerbaRuntimeError(f"I don't know a function called {s.func_name}.", line_no=ln)
+            
+            evaled_args = [self._eval_expr(a, env=env, context="general") for a in s.args]
+            q = Queue()
+            
+            proc = Process(target=_verba_parallel_worker, args=(q, fn_def.name, fn_def.params, fn_def.body, evaled_args))
+            proc.start()
+            
+            env.set(s.target_name, {"process": proc, "queue": q, "type": "parallel_task"})
+            return
+
+        if isinstance(s, ast.JoinStmt):
+            task = env.get(s.process_name)
+            if not isinstance(task, dict) or task.get("type") != "parallel_task":
+                raise VerbaRuntimeError(f"'{s.process_name}' is not a parallel process.", line_no=ln)
+            
+            proc = task["process"]
+            q = task["queue"]
+            res_data = q.get()
+            proc.join()
+            
+            if res_data["error"]:
+                raise VerbaRuntimeError(f"Parallel process failed: {res_data['error']}", line_no=ln)
+            
+            env.set(s.target_name, res_data["result"])
+            return
+            return
             
         if isinstance(s, ast.AwaitStmt):
             import time
@@ -1099,6 +1131,18 @@ class Interpreter:
                 if not self._match_pattern(p, s, env):
                     return False
             return True
+        if isinstance(pattern, ast.WildcardPattern):
+            return True
+        if isinstance(pattern, ast.TypePattern):
+            t = pattern.type_name
+            if t == "flag":   return isinstance(subject, bool) # Move up to catch before number
+            if t == "number": return isinstance(subject, (int, float)) and not isinstance(subject, bool)
+            if t == "word":   return isinstance(subject, str)
+            if t == "list":   return isinstance(subject, list)
+            if t == "map":    return isinstance(subject, dict)
+            if t == "none":   return subject is None or (isinstance(subject, OptionValue) and not subject.has_value)
+            if t == "some":   return isinstance(subject, OptionValue) and subject.has_value
+            return False
         if isinstance(pattern, ast.MapPattern):
             if not isinstance(subject, dict):
                 return False
@@ -1518,3 +1562,34 @@ class Interpreter:
         if isinstance(v, float) and v.is_integer():
             return str(int(v))
         return str(v)
+
+def _verba_parallel_worker(q_out, fn_name, params, body, args_in):
+    """Runs a Verba function in a separate OS process."""
+    try:
+        from .runtime_types import Environment, _ReturnSignal
+        from .runtime import Interpreter
+
+        interp = Interpreter()
+        child_env = Environment(parent=interp.globals)
+
+        # Populate function parameters
+        for p, val in zip(params, args_in):
+            child_env.set(p, val)
+
+        try:
+            interp._exec_block(body, env=child_env)
+            # Function might not have a give statement (returns None)
+            q_out.put({"result": None, "done": True, "error": None})
+        except _ReturnSignal as rs:
+            q_out.put({"result": rs.value, "done": True, "error": None})
+        except Exception as body_ex:
+            import traceback
+            q_out.put({"result": None, "done": True, "error": f"{str(body_ex)}\n{traceback.format_exc()}"})
+
+    except Exception as ex:
+        # Catch errors in setup (imports, interpreter init)
+        import traceback
+        try:
+            q_out.put({"result": None, "done": True, "error": f"Worker Setup Error: {str(ex)}\n{traceback.format_exc()}"})
+        except:
+            pass # Queue might be closed

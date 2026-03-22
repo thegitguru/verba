@@ -440,6 +440,20 @@ class AwaitStmt(Stmt):
     target_name: str
     task_name: str
 
+@dataclass(frozen=True)
+class ParallelRun(Stmt):
+    span: Span
+    target_name: str
+    func_name: str
+    args: list[Expr]
+    kwargs: Optional[dict[str, Expr]] = None
+
+@dataclass(frozen=True)
+class JoinStmt(Stmt):
+    span: Span
+    target_name: str
+    process_name: str
+
 
 # --- HTTP server nodes ---
 
@@ -581,6 +595,15 @@ class ValuePattern(MatchPattern):
 class VariablePattern(MatchPattern):
     span: Span
     name: str
+
+@dataclass(frozen=True)
+class WildcardPattern(MatchPattern):
+    span: Span
+
+@dataclass(frozen=True)
+class TypePattern(MatchPattern):
+    span: Span
+    type_name: str # e.g. "number", "word", "list", "map", "flag", "none"
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,7 @@
 """Verba — a natural English programming language."""
 
-from .cli import main
+def main():
+    from .cli import main as _main
+    return _main()
 
 __all__ = ["main"]
