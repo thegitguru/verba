@@ -1130,14 +1130,44 @@ class Interpreter:
             return self._eval_bool(b.left, env=env) or self._eval_bool(b.right, env=env)
         raise VerbaRuntimeError("I did not understand that condition.", line_no=ln, col=col, line=raw)
 
-    def _call(self, name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
-        fn = caller_env.get_function(name)
-        if fn is None:
-            raise VerbaRuntimeError(f"I cannot run the function called {name} because it has not been defined.", line_no=line_no)
+    def _call(self, fn_input: Any, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
+        if isinstance(fn_input, str):
+            fn = caller_env.get_function(fn_input)
+            if fn is None:
+                raise VerbaRuntimeError(f"I cannot run the function called {fn_input} because it has not been defined.", line_no=line_no)
+            name = fn_input
+        else:
+            fn = fn_input
+            name = getattr(fn, "name", "anonymous")
         
         evaled_args = [self._eval_expr(a, env=caller_env, context="general") for a in args]
         evaled_kwargs = {k: self._eval_expr(v, env=caller_env, context="general") for k, v in (kwargs or {}).items()}
         
+        if isinstance(fn, NativeFunction):
+            nf = fn
+            call_args: list[Any] = []
+            arg_i = 0
+            for p in nf.params:
+                if p == "__interp__":
+                    call_args.append(self)
+                elif p in evaled_kwargs:
+                    call_args.append(evaled_kwargs[p])
+                elif arg_i < len(evaled_args):
+                    call_args.append(evaled_args[arg_i])
+                    arg_i += 1
+                else:
+                    call_args.append("")
+            try:
+                result = nf.fn(*call_args)
+            except Exception as e:
+                raise VerbaRuntimeError(str(e), line_no=line_no)
+            if isinstance(result, dict):
+                from .runtime_types import NativeInstance
+                ni = NativeInstance(name, {})
+                ni.props = {k: (str(v) if not isinstance(v, str) else v) for k, v in result.items()}
+                return ni
+            return result if result is not None else ""
+
         call_env = Environment(parent=fn.defining_env or self.globals)
         for i, p in enumerate(fn.params):
             if p in evaled_kwargs:
@@ -1195,6 +1225,10 @@ class Interpreter:
     def _call_method(self, obj: Any, name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
         if isinstance(obj, OptionValue):
             return self._call_option_method(obj, name, args, kwargs, caller_env=caller_env, line_no=line_no)
+        if isinstance(obj, list):
+            return self._call_list_method(obj, name, args, kwargs, caller_env=caller_env, line_no=line_no)
+        if isinstance(obj, dict):
+            return self._call_map_method(obj, name, args, kwargs, caller_env=caller_env, line_no=line_no)
         if isinstance(obj, NativeInstance):
             return self._call_native_method(obj, name, args, kwargs, caller_env=caller_env, line_no=line_no)
         if isinstance(obj, Module):
@@ -1260,6 +1294,23 @@ class Interpreter:
             return ni
         return result if result is not None else ""
 
+    def _call_fn(self, fn: Any, args: list[Any], caller_env: Environment, line_no: int) -> Any:
+        """Call a function (by name or object) with already evaluated arguments."""
+        from .ast import Literal, AsyncDefine, Span
+        dummy_span = Span(line_no, 0, "")
+        lit_args = [Literal(dummy_span, a) for a in args]
+        
+        from .runtime_types import Function
+        if isinstance(fn, (Function, AsyncDefine)):
+            # Direct call by object
+            name = fn.name
+        elif isinstance(fn, str):
+            name = fn
+        else:
+            raise VerbaRuntimeError(f"Cannot call {type(fn).__name__} as a function.", line_no=line_no)
+            
+        return self._call(name, lit_args, caller_env=caller_env, line_no=line_no)
+
     def _call_option_method(self, obj: OptionValue, method_name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
         evaled_args = [self._eval_expr(a, env=caller_env, context="general") for a in args]
         if method_name == "is_some":
@@ -1278,9 +1329,114 @@ class Interpreter:
             if obj.has_value:
                 return obj
             if not evaled_args:
-                raise VerbaRuntimeError("option.or_else needs a fallback value.", line_no=line_no)
-            return OptionValue.some(evaled_args[0])
+                raise VerbaRuntimeError("option.or_else needs a fallback option.", line_no=line_no)
+            res = evaled_args[0]
+            if not isinstance(res, OptionValue):
+                # If they passed a plain value, implicitly wrap it to be nice, but warn? 
+                # Better to just return it as an option if it's already one.
+                return OptionValue.some(res)
+            return res
+        if method_name == "map":
+            if not obj.has_value:
+                return obj
+            if not evaled_args:
+                raise VerbaRuntimeError("option.map needs a function.", line_no=line_no)
+            res = self._call_fn(evaled_args[0], [obj.value], caller_env, line_no)
+            return OptionValue.some(res)
+        if method_name == "and_then":
+            if not obj.has_value:
+                return obj
+            if not evaled_args:
+                raise VerbaRuntimeError("option.and_then needs a function.", line_no=line_no)
+            res = self._call_fn(evaled_args[0], [obj.value], caller_env, line_no)
+            if not isinstance(res, OptionValue):
+                raise VerbaRuntimeError("option.and_then: callback must return an option.", line_no=line_no)
+            return res
+        if method_name == "filter":
+            if not obj.has_value:
+                return obj
+            if not evaled_args:
+                raise VerbaRuntimeError("option.filter needs a predicate function.", line_no=line_no)
+            ok = self._call_fn(evaled_args[0], [obj.value], caller_env, line_no)
+            return obj if ok else OptionValue.none()
         raise VerbaRuntimeError(f"Option has no method called {method_name}.", line_no=line_no)
+
+    def _call_list_method(self, obj: list, method_name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
+        evaled_args = [self._eval_expr(a, env=caller_env, context="general") for a in args]
+        
+        if method_name == "map":
+            if not evaled_args: raise VerbaRuntimeError("list.map necessitates a callback function.", line_no=line_no)
+            return [self._call_fn(evaled_args[0], [item], caller_env, line_no) for item in obj]
+        
+        if method_name == "filter":
+            if not evaled_args: raise VerbaRuntimeError("list.filter necessitates a predicate function.", line_no=line_no)
+            return [item for item in obj if self._call_fn(evaled_args[0], [item], caller_env, line_no)]
+        
+        if method_name == "reduce":
+            if len(evaled_args) < 1: raise VerbaRuntimeError("list.reduce necessitates at least a callback function.", line_no=line_no)
+            fn = evaled_args[0]
+            if not obj:
+                if len(evaled_args) > 1: return evaled_args[1]
+                raise VerbaRuntimeError("Cannot reduce an empty list with no initial value.", line_no=line_no)
+            
+            it = iter(obj)
+            res = evaled_args[1] if len(evaled_args) > 1 else next(it)
+            for item in it:
+                res = self._call_fn(fn, [res, item], caller_env, line_no)
+            return res
+            
+        if method_name == "sum":
+            return sum(self._to_number(x, line_no) for x in obj)
+            
+        if method_name == "any":
+            if evaled_args:
+                return any(self._call_fn(evaled_args[0], [x], caller_env, line_no) for x in obj)
+            return any(bool(x) for x in obj)
+            
+        if method_name == "all":
+            if evaled_args:
+                return all(self._call_fn(evaled_args[0], [x], caller_env, line_no) for x in obj)
+            return all(bool(x) for x in obj)
+            
+        if method_name == "join":
+            sep = str(evaled_args[0]) if evaled_args else ""
+            return sep.join(self._format_value(x) for x in obj)
+            
+        if method_name == "count":
+            return len(obj)
+            
+        raise VerbaRuntimeError(f"List has no method called {method_name}.", line_no=line_no)
+
+    def _call_map_method(self, obj: dict, method_name: str, args: list[ast.Expr], kwargs: Optional[dict[str, ast.Expr]] = None, *, caller_env: Environment, line_no: int) -> Any:
+        evaled_args = [self._eval_expr(a, env=caller_env, context="general") for a in args]
+        
+        if method_name == "map":
+            if not evaled_args: raise VerbaRuntimeError("map.map necessitates a callback function (key, value).", line_no=line_no)
+            return {k: self._call_fn(evaled_args[0], [k, v], caller_env, line_no) for k, v in obj.items()}
+            
+        if method_name == "filter":
+            if not evaled_args: raise VerbaRuntimeError("map.filter necessitates a predicate function (key, value).", line_no=line_no)
+            return {k: v for k, v in obj.items() if self._call_fn(evaled_args[0], [k, v], caller_env, line_no)}
+            
+        if method_name == "keys":
+            return list(obj.keys())
+            
+        if method_name == "values":
+            return list(obj.values())
+            
+        if method_name == "get":
+            key = evaled_args[0] if evaled_args else None
+            default = evaled_args[1] if len(evaled_args) > 1 else None
+            return obj.get(key, default)
+            
+        if method_name == "has":
+            key = evaled_args[0] if evaled_args else None
+            return key in obj
+            
+        if method_name == "count":
+            return len(obj)
+            
+        raise VerbaRuntimeError(f"Map has no method called {method_name}.", line_no=line_no)
 
 
     def _to_number(self, v: Any, line_no: int) -> float:

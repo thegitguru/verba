@@ -1,0 +1,58 @@
+note "Verba Functional List Demonstration".
+
+define square needing n:
+    give n * n.
+end.
+
+define is_odd needing n:
+    if n % 2 == 1:
+        give true.
+    otherwise:
+        give false.
+    end.
+end.
+
+define add needing a, b:
+    give a + b.
+end.
+
+define is_large needing x:
+    if x > 4:
+        give true.
+    otherwise:
+        give false.
+    end.
+end.
+
+items = [1, 2, 3, 4, 5].
+
+say "--- Testing map ---".
+squares = the result of running items.map with square.
+say "Original: ", items.
+say "Squares: ", squares.
+
+say "--- Testing filter ---".
+odds = the result of running items.filter with is_odd.
+say "Odds: ", odds.
+
+say "--- Testing reduce ---".
+total = the result of running items.reduce with add.
+say "Sum (via reduce): ", total.
+
+say "--- Testing sum, any, all ---".
+s = the result of running items.sum.
+say "Sum: ", s.
+
+has_large = the result of running items.any with is_large.
+say "Any > 4: ", has_large.
+
+all_positive = the result of running items.all with is_large.
+say "All > 4: ", all_positive.
+
+say "--- Testing join ---".
+csv = the result of running items.join with ", ".
+say "CSV: ", csv.
+
+say "--- Testing count ---".
+c = the result of running items.count.
+say "Count: ", c.

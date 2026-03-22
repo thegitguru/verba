@@ -1,0 +1,6 @@
+define greet needing name = "World":
+    say "Hello, ", name, "!".
+end.
+
+run greet.
+run greet with "Verba".

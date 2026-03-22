@@ -130,8 +130,11 @@ Use these Option methods:
 - `option.is_some`
 - `option.is_none`
 - `option.unwrap`
-- `option.unwrap_or`
-- `option.or_else`
+- `option.unwrap_or with fallback`
+- `option.or_else with fallback_option`
+- `option.map with callback`
+- `option.filter with predicate`
+- `option.and_then with callback` (bind)
 
 ### String Interpolation
 
@@ -281,9 +284,24 @@ last 2 of nums into bottom2.
 /- list literal shorthand
 squares = [1, 4, 9, 16].
 
-/- list comprehension
-evens = x for x in nums if x > 2.
-doubled = x * 2 for x in nums.
+/- `doubled = x * 2 for x in nums` (comprehension).
+
+#### Modern Functional Methods
+```verba
+define square needing n: give n * n. end.
+items = [1, 2, 3, 4, 5].
+
+/- Transform and Filter
+squares = the result of running items.map with square.
+odds = the result of running items.filter with (define checking needing n: give n % 2 == 1. end.).
+
+/- Aggregation
+total = the result of running items.sum.
+has_large = the result of running items.any with (define checking needing x: give x > 4. end.).
+csv = the result of running items.join with ", ".
+```
+
+**Supported List Methods:** `map`, `filter`, `reduce`, `any`, `all`, `sum`, `join`, `count`.
 ```
 
 ---
@@ -307,6 +325,16 @@ config = a map of
 
 /- map comprehension (key: value for k, v in source)
 counts = k: (length of v) for k, v in data.
+
+#### Modern Functional Methods
+```verba
+prices = {"Apple": 10, "Banana": 5}.
+expensive = the result of running prices.filter with (define check needing k, v: give v > 5. end.).
+keys = the result of running prices.keys.
+price = the result of running prices.get with "Apple", 0.
+```
+
+**Supported Map Methods:** `map`, `filter`, `keys`, `values`, `get`, `has`, `count`.
 ```
 
 ---

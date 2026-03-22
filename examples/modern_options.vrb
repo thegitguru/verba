@@ -1,0 +1,48 @@
+note "Verba Modern Options Demonstration".
+note "Demonstrates: map, and_then, filter, and refined or_else.".
+
+define double needing n:
+    give n * 2.
+end.
+
+define is_positive needing n:
+    if n > 0:
+        give true.
+    otherwise:
+        give false.
+    end.
+end.
+
+define wrap_as_option needing v:
+    r = some v.
+    give r.
+end.
+
+say "--- Testing map ---".
+val = some 10.
+doubled = the result of running val.map with double.
+say "Original: ", val, " -> Doubled: ", doubled.
+
+say "--- Testing filter ---".
+pos = the result of running val.filter with is_positive.
+neg_val = some -5.
+neg = the result of running neg_val.filter with is_positive.
+say "10 is positive: ", pos.
+say "-5 is positive: ", neg.
+
+say "--- Testing and_then (bind) ---".
+chained = the result of running val.and_then with wrap_as_option.
+say "Chained some: ", chained.
+
+say "--- Testing or_else (chaining) ---".
+missing = none.
+fallback = some "Recovered".
+recovered = the result of running missing.or_else with fallback.
+say "None or_else Some: ", recovered.
+
+say "--- Pipeline Simulation ---".
+p1 = some 5.
+p2 = the result of running p1.map with double.
+p3 = the result of running p2.filter with is_positive.
+result = the result of running p3.unwrap_or with 0.
+say "Final pipeline result: ", result.

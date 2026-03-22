@@ -1,0 +1,42 @@
+note "Verba Functional Map Demonstration".
+
+define format_pair needing k, v:
+    give "{k} -> {v}".
+end.
+
+define is_price_high needing k, v:
+    if v > 50:
+        give true.
+    otherwise:
+        give false.
+    end.
+end.
+
+prices = { "Apple": 10, "Banana": 5, "Caviar": 100, "Diamond": 500 }.
+
+say "--- Testing keys and values ---".
+k = the result of running prices.keys.
+v = the result of running prices.values.
+say "Keys: ", k.
+say "Values: ", v.
+
+say "--- Testing filter ---".
+expensive = the result of running prices.filter with is_price_high.
+say "Expensive items: ", expensive.
+
+say "--- Testing map ---".
+descriptions = the result of running prices.map with format_pair.
+say "Descriptions: ", descriptions.
+
+say "--- Testing get and has ---".
+apple_price = the result of running prices.get with "Apple".
+say "Apple price: ", apple_price.
+
+missing = the result of running prices.get with "Orange", 0.
+say "Orange price (default): ", missing.
+
+has_apple = the result of running prices.has with "Apple".
+say "Has Apple? ", has_apple.
+
+has_orange = the result of running prices.has with "Orange".
+say "Has Orange? ", has_orange.
